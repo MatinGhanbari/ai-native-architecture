@@ -196,11 +196,11 @@ class RealLLM:
         self.timeout = int(os.getenv("LLM_TIMEOUT_S", "120"))
         self.name = model or cfg["model"]
 
-    def complete(self, messages, timeout=None):
+    def complete(self, messages, timeout=None, temperature=0):
         msgs = [dict(m) for m in messages]
         if self.no_think and msgs and msgs[0]["role"] == "system":
             msgs[0]["content"] += "\n/no_think"          # Qwen3: خاموش کردن حالت think
-        body = json.dumps({"model": self.name, "messages": msgs, "temperature": 0, "stream": False}, ensure_ascii=False).encode("utf-8")
+        body = json.dumps({"model": self.name, "messages": msgs, "temperature": temperature, "stream": False}, ensure_ascii=False).encode("utf-8")
         headers = {"Content-Type": "application/json"}
         if self.key:
             headers["Authorization"] = f"Bearer {self.key}"

@@ -119,6 +119,83 @@ def reset(_):
         for f in os.listdir(d): os.remove(os.path.join(d, f))
     return {"ok": True}
 
+
+# ---------- مرحلهٔ A: قاعدهٔ الزام‌آور، پنج اجرای مدل در برابر rule engine ----------
+from assistant import rules
+RULE_DELIVERED, RULE_TODAY = "۱۴۰۵/۰۸/۲۰", "۱۴۰۵/۰۸/۲۸"
+RULE_Q = f"سفارش ۱۰۴۵ من روز {RULE_DELIVERED} تحویل شده و امروز {RULE_TODAY} است. هنوز می‌توانم آن را مرجوع کنم؟"
+RULE_SYS = ("تو دستیار پشتیبانی فروشگاه اینترنتی «کتاب‌سرا» هستی و فقط بر اساس آیین‌نامه پاسخ می‌دهی.\n"
+            "آیین‌نامه، بند ۱: مشتری می‌تواند کالا را تا ۷ روز پس از تحویل مرجوع کند، به شرط آنکه کالا سالم و در بسته‌بندی اصلی باشد.\n"
+            "پاسخ را با «بله» یا «خیر» شروع کن و در یک یا دو جمله دلیلش را بگو.")
+RULE_TEMP = float(os.getenv("RULE_TEMPERATURE", "0.7"))   # دمای معمول چت‌بات‌ها؛ در UI نمایش داده می‌شود
+RULE_LIVE_CACHE = os.path.join(BASE, "ui_cache", "rule5-live.json")
+
+def verdict_of(text):
+    t = (text or "").strip().lstrip("«\"'*# ").replace("\u200c", "")
+    if t.startswith("بله") or t.startswith("آره"): return "بله"
+    if t.startswith("خیر") or t.startswith("نه"): return "خیر"
+    return "نامشخص"
+
+def rule5(b):
+    mode = profiles.normalize(b.get("mode"))
+    truth = rules.refund_allowed(RULE_DELIVERED, RULE_TODAY)["verdict"]
+    if mode == "offline":
+        if os.path.exists(RULE_LIVE_CACHE):
+            out = json.load(open(RULE_LIVE_CACHE, encoding="utf-8")); out["precomputed"] = True
+            return out
+        raise ModeError("نتیجهٔ ذخیره‌شدهٔ اجرای زنده نیست؛ یک بار در حالت LM Studio یا 9router اجرا کنید.")
+    try:
+        return _rule5_live(mode, truth, int(b.get("n", 5)))
+    except ModeError as e:
+        if os.path.exists(RULE_LIVE_CACHE):
+            out = json.load(open(RULE_LIVE_CACHE, encoding="utf-8")); out["precomputed"] = True; out["live_error"] = str(e)[:160]
+            return out
+        raise
+
+def _rule5_live(mode, truth, n):
+    mode_env(mode)
+    from assistant.llm import RealLLM
+    llm = RealLLM(profile=mode); runs = []
+    for i in range(n):
+        t0 = time.time()
+        try:
+            ans = llm.complete([{"role": "system", "content": RULE_SYS}, {"role": "user", "content": RULE_Q}], temperature=RULE_TEMP)
+        except OSError as e:
+            raise ModeError(f"{mode}: در دسترس نیست ({e})")
+        v = verdict_of(ans)
+        runs.append({"i": i + 1, "verdict": v, "correct": v == truth, "answer": ans[:400], "latency_ms": int((time.time() - t0) * 1000)})
+    out = {"question": RULE_Q, "truth": truth, "temperature": RULE_TEMP, "model": llm.name, "mode": mode, "runs": runs,
+           "correct": sum(r["correct"] for r in runs), "distinct": len({r["verdict"] for r in runs}),
+           "cached_at": time.strftime("%Y-%m-%d %H:%M")}
+    os.makedirs(os.path.dirname(RULE_LIVE_CACHE), exist_ok=True)
+    json.dump(out, open(RULE_LIVE_CACHE, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    return out
+
+def rule_engine(b):
+    return dict(rules.refund_allowed(RULE_DELIVERED, RULE_TODAY), question=RULE_Q)
+
+# ---------- مرحلهٔ D۱: یک درخواست، سه حالت ----------
+CMP_Q = "وضعیت سفارش ۱۰۴۲ چیست؟"
+def compare3(b):
+    rows = []
+    for m in ("offline", "lmstudio", "9router"):
+        cp = os.path.join(BASE, "ui_cache", f"compare3-{m}.json")
+        try:
+            r = run_one({"q": CMP_Q, "mode": m})
+            s = r["summary"]; models = [e.get("model") for e in r["events"] if e.get("event") == "llm_call"]
+            row = {"mode": m, "model": models[0] if models else "", "latency_ms": s["latency_ms"], "tokens": s["tokens_in"] + s["tokens_out"],
+                   "llm_calls": s["llm_calls"], "cost_usd": s["cost_usd"], "status": r["final"]["status"], "answer": r["final"]["answer"][:220],
+                   "cached_at": time.strftime("%Y-%m-%d %H:%M")}
+            if m != "offline":
+                os.makedirs(os.path.dirname(cp), exist_ok=True); json.dump(row, open(cp, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        except Exception as e:
+            if os.path.exists(cp):
+                row = json.load(open(cp, encoding="utf-8")); row["precomputed"] = True; row["live_error"] = str(e)[:160]
+            else:
+                row = {"mode": m, "error": str(e)[:200]}
+        rows.append(row)
+    return {"question": CMP_Q, "rows": rows}
+
 CACHE = os.path.join(BASE, "ui_cache")
 CACHEABLE = {"/api/run", "/api/eval", "/api/atam"}
 
@@ -136,6 +213,7 @@ def load_cached(cp):
     return out
 
 ROUTES = {"/api/run": run_one, "/api/eval": run_eval, "/api/atam": run_atam,
+          "/api/rule5": rule5, "/api/rule_engine": rule_engine, "/api/compare3": compare3,
           "/api/queue/decide": queue_decide, "/api/reset": reset}
 
 class H(BaseHTTPRequestHandler):

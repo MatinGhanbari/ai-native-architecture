@@ -1,0 +1,37 @@
+# Merge output
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env
+.env.*
+
+# Office lock files
+~$*
+
+# Local commercial fonts — do not commit AradFDVF
+shared/fonts/*
+!shared/fonts/README.md
+demo/ui/fonts/AradFDVF.ttf
+demo/ui/fonts/AradFDVF*.ttf
+
+# Demo runtime (ui_cache/ is kept: precomputed offline results)
+demo/sessions/
+demo/traces/
+demo/approval_queue.jsonl
+**/approval_queue.jsonl
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Presenter 3 personal speaking guide — never commit
+part-03_control-quality/private/
+*Guide*Part3*Matin*.docx
+*Guide*Presenter3*Matin*.docx
+**/Guide_Presenter3_Matin*.docx

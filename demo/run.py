@@ -2,6 +2,7 @@
 import argparse, json, os, sys
 sys.stdout.reconfigure(encoding="utf-8")
 from assistant.agent import Agent
+from assistant import profiles
 from assistant.textutil import to_fa
 
 p = argparse.ArgumentParser(description="دستیار پشتیبانی فروشگاه (دموی AI-native، نسخهٔ ۲)")
@@ -20,7 +21,7 @@ a = p.parse_args()
 level = "off" if a.no_guards else ("filter" if a.filters_only else "full")
 agent = Agent(a.customer, guards=level, fault=a.fault, approval=a.approval, verbose=not a.quiet, poisoned_kb=a.poisoned_kb or None)
 names = {"off": "خاموش (فقط RAG)", "filter": "فقط فیلتر", "full": "کامل (ساختاری)"}
-print(f"\n❓ {a.question}   (مشتری: {a.customer}، حالت: {os.getenv('MODE', 'offline')}، guards: {names[level]})\n")
+print(f"\n❓ {a.question}   (مشتری: {a.customer}، حالت: {profiles.current()}، guards: {names[level]})\n")
 out = agent.run(a.question)
 f, s = out["final"], out["summary"]
 print("\n✅ خروجی نهایی (معتبر طبق JSON Schema):")

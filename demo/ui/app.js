@@ -238,15 +238,19 @@ function setMode(m) {
   document.querySelectorAll(".seg[aria-label] button").forEach(b => { b.classList.toggle("on", b.dataset.mode === m); b.setAttribute("aria-checked", b.dataset.mode === m); });
   const st = $("#modeSt"), s = state.status || {};
   if (m === "offline") { st.className = "mode-st ok"; st.textContent = "مدل ساختگی قطعی، بدون اینترنت"; }
-  else if (s.key_present) { st.className = "mode-st ok"; st.innerHTML = `<span class="en">${esc(s.model)}</span> آماده`; }
-  else { st.className = "mode-st bad"; st.innerHTML = 'کلید <span class="en">OPENAI_API_KEY</span> تنظیم نشده'; }
+  else {
+    const p = (s.profiles || {})[m];
+    if (p && p.ready) { st.className = "mode-st ok"; st.innerHTML = `<span class="en">${esc(p.model)}</span> آماده`; }
+    else { st.className = "mode-st bad"; st.textContent = (p && p.reason) || "این حالت پیکربندی نشده است"; }
+  }
 }
 $("#resetBtn").onclick = async () => { await api("/api/reset", {}); render(); };
 (async () => {
   try { state.status = await api("/api/status"); } catch (e) { state.status = {}; }
   const h = new URLSearchParams(location.hash.slice(1));
   state.i = Math.max(0, Math.min(STEPS.length - 1, (+h.get("s") || 2) - 1));
-  setMode(state.status.default_mode === "real" && state.status.key_present ? "real" : "offline");
+  const dm = state.status.default_mode, dp = (state.status.profiles || {})[dm];
+  setMode(dp && dp.ready && document.querySelector(`.seg [data-mode="${dm}"]`) ? dm : "offline");
   render();
   if (h.get("auto") && STEPS[state.i].auto) await STEPS[state.i].auto({ reg: h.get("reg") === "1" });
 })();

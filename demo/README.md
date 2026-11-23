@@ -21,20 +21,23 @@
 cd demo
 ```
 
-## دو حالت اجرا
+## حالت‌های اجرا
 | حالت | توضیح |
 |---|---|
-| `MODE=offline` (پیش‌فرض) | مدل ساختگی قطعی؛ بدون اینترنت و بدون کلید. خروجی همیشه یکسان است. |
-| `MODE=real` | هر API سازگار با OpenAI Chat Completions. |
+| `MODE=offline` (پیش‌فرض) | مدل ساختگی قطعی؛ بدون اینترنت و بدون کلید. خروجی همیشه یکسان است و عددهای ارائه از همین حالت‌اند. |
+| `MODE=9router` | 9router روی `http://localhost:20128/v1` با combo `demo` |
+| `MODE=lmstudio` | LM Studio محلی روی `http://127.0.0.1:1234/v1` با `qwen/qwen3-4b` |
+| `MODE=real` | هر API سازگار با OpenAI با `OPENAI_API_KEY`، `OPENAI_BASE_URL` و `OPENAI_MODEL` (مثل قبل) |
 
-```bash
-# حالت واقعی (اختیاری)
-export MODE=real
-export OPENAI_API_KEY="کلید شما"
-export OPENAI_BASE_URL="https://api.openai.com/v1"   # یا هر سرویس سازگار
-export OPENAI_MODEL="gpt-4o-mini"
-```
-در ویندوز (PowerShell) به جای `export` بنویسید: `$env:MODE="offline"`.
+کلیدها و آدرس‌ها در فایل `.env` ریشهٔ مخزن هستند و این فایل در git نیست. الگویش `.env.example` است. حالت پیش‌فرض را `LLM_PROFILE` در همان فایل تعیین می‌کند و `MODE` در محیط آن را بازنویسی می‌کند. در ویندوز (PowerShell): `$env:MODE="lmstudio"; python run.py "مهلت مرجوعی چند روز است؟"`.
+
+نکته‌ها برای حالت زنده:
+- مدل همان کنش JSON دمو را برمی‌گرداند و function calling لازم نیست. خروجی `<think>` مدل Qwen3 قبل از parse حذف می‌شود و برای Qwen3، `/no_think` به پیام system اضافه می‌شود.
+- فقط در حالت زنده، یک راهنمای کوتاه ابزار به prompt نسخهٔ support-v3 اضافه می‌شود. بدون آن، مدل‌های کوچک در حلقهٔ retrieve می‌مانند. prompt حالت آفلاین دست نخورده است.
+- سقف زمان هر درخواست در حالت زنده ۶۰ ثانیه است (`BUDGET_MS_LIVE`) و در حالت آفلاین همان ۶ ثانیه (`BUDGET_MS`).
+- خطاهای رفتاری مدل (`loop`، `runaway`، `bad_json`، `off_scope_output`) روی مدل واقعی هم با تزریق خطا نمایش داده می‌شوند. در trace، نام مدل با `+fault:` مشخص است.
+- قطعی provider (`provider_outage`) شبیه‌سازی می‌شود. در 9router، provider پشتیبان LM Studio است (`NINEROUTER_FALLBACK_PROFILE=lmstudio`). اگر LM Studio خاموش باشد، مدل کوچک همان 9router جایش را می‌گیرد.
+
 
 ---
 
@@ -70,7 +73,7 @@ MOCK_REGRESSION=1 python evals/run_evals.py ; echo $?
 ```
 انتظار: موارد آیین‌نامه رد می‌شوند، نرخ قبولی ۷۱٪ و exit code برابر ۱؛ یعنی CI جلوی merge را می‌گیرد.
 (در PowerShell: `$env:MOCK_REGRESSION="1"; python evals/run_evals.py; echo $LASTEXITCODE` و بعد `Remove-Item Env:MOCK_REGRESSION`.)
-در حالت `MODE=real` گزینهٔ `--judge` روش LLM-as-a-judge را هم برای پاسخ‌های answered اجرا می‌کند.
+در حالت زنده (`9router`، `lmstudio` یا `real`) گزینهٔ `--judge` روش LLM-as-a-judge را هم برای پاسخ‌های answered اجرا می‌کند.
 
 ## سناریوی ۴ — حملهٔ تزریق prompt و دفاع
 ```bash

@@ -1,6 +1,7 @@
 """Controller: مؤلفهٔ کنترلی معماری مرجع؛ کد قطعی که حلقهٔ عامل را مثل یک ماشین حالت با بودجهٔ محدود اداره می‌کند.
 حالت‌ها: PLAN → ACT (retrieve/tool) → OBSERVE → ... → VERIFY → DONE | ESCALATED | STOPPED_BUDGET"""
 import json, os, re
+from . import profiles
 from .textutil import norm, order_ids, numbers
 
 INJECTION_PATTERNS = [r"نادیده بگیر", r"ignore (all )?previous", r"دستور(های|ات)? (قبلی|سیستم)", r"system prompt", r"همهٔ? سفارش"]
@@ -12,7 +13,9 @@ class Budget:
     def __init__(self):
         self.max_steps = int(os.getenv("BUDGET_STEPS", "6"))
         self.max_tokens = int(os.getenv("BUDGET_TOKENS", "4000"))
-        self.max_ms = int(os.getenv("BUDGET_MS", "6000"))
+        # مدل واقعی (9router / LM Studio) کندتر از mock است؛ سقف زمان در حالت زنده بیشتر است (BUDGET_MS_LIVE)
+        live = profiles.is_live()
+        self.max_ms = int(os.getenv("BUDGET_MS_LIVE", "60000") if live else os.getenv("BUDGET_MS", "6000"))
         self.max_cost = float(os.getenv("BUDGET_USD", "0.002"))
 
 class Controller:

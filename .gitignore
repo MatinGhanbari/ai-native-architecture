@@ -40,3 +40,8 @@ part-03_control-quality/private/
 
 # Unified demo launcher logs
 launcher/logs/
+
+# LLM profiles: real keys only in .env (ignored); template is committed
+!.env.example
+demo/.env
+gw_cache.json

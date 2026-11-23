@@ -6,7 +6,7 @@
   part12-web   frontend دموی بخش ۱ و ۲ (Next.js dev)         http://127.0.0.1:3000
   home         صفحهٔ شروع همین لانچر                         http://127.0.0.1:8700
 """
-import argparse, json, os, shutil, signal, socket, subprocess, sys, threading, time, urllib.request, webbrowser
+import argparse, importlib.util, json, os, shutil, signal, socket, subprocess, sys, threading, time, urllib.request, webbrowser
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -16,6 +16,11 @@ DEMO3 = os.path.join(ROOT, "demo")
 FONTS = os.path.join(DEMO3, "ui", "fonts")
 LOGS = os.path.join(HERE, "logs")
 WIN = os.name == "nt"
+
+# پروفایل‌های مدل (offline / 9router / lmstudio) از همان ماژول دموی بخش ۳ خوانده می‌شود؛ کلیدها از .env ریشه
+_spec = importlib.util.spec_from_file_location("demo_profiles", os.path.join(DEMO3, "assistant", "profiles.py"))
+profiles = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(profiles)
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -77,6 +82,8 @@ class Service:
             return
         os.makedirs(LOGS, exist_ok=True)
         env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1", **self.env)
+        if self.key != "part3":   # کلیدهای .env فقط به دموی بخش ۳ و پراکسی لانچر می‌رسند
+            env = {k: v for k, v in env.items() if not k.endswith("_API_KEY") or k in self.env}
         kw = {}
         if WIN:
             kw["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
@@ -144,9 +151,15 @@ def build_services(a):
         return [node, next_bin, "dev", "--turbopack", "-p", "3000", "-H", "127.0.0.1"]
 
     svc3 = Service("part3", "دموی بخش ۳", a.part3_port, f"http://127.0.0.1:{a.part3_port}/api/status", part3_cmd, DEMO3,
-                   {"UI_PORT": str(a.part3_port)}, timeout=60)
+                   {"UI_PORT": str(a.part3_port), "LLM_PROFILE": a.llm}, timeout=60)
+    if a.llm == "offline":
+        api_env = {"LLM_PROVIDER": "mock"}
+    else:   # backend بخش ۱ و ۲ از پراکسی لانچر استفاده می‌کند؛ کلید واقعی به آن پروسه داده نمی‌شود
+        cfg = profiles.config(a.llm)
+        api_env = {"LLM_PROVIDER": "openai", "LLM_BASE_URL": f"http://127.0.0.1:{a.proxy_port}/v1",
+                   "LLM_API_KEY": "via-launcher-proxy", "LLM_MODEL": cfg["model"], "EMBEDDING_MODEL": "local-only"}
     svc_api = Service("part12-api", "backend بخش ۱ و ۲", a.api_port, f"http://127.0.0.1:{a.api_port}/health", api_cmd, backend,
-                      timeout=300)
+                      api_env, timeout=300)
     svc_web = Service("part12-web", "frontend بخش ۱ و ۲", 3000, "http://127.0.0.1:3000/", web_cmd, frontend,
                       {"NEXT_PUBLIC_API_BASE_URL": f"http://127.0.0.1:{a.api_port}", "NEXT_TELEMETRY_DISABLED": "1"},
                       timeout=300)
@@ -156,6 +169,9 @@ def build_services(a):
     if a.only in (None, "part3"):
         out.append(svc3)
     return out
+
+
+LLM_INFO = {"profile": "offline", "label": "آفلاین (mock)", "model": None}
 
 
 def make_handler(services):
@@ -181,6 +197,8 @@ def make_handler(services):
                 return self._send(200, home, "text/html; charset=utf-8")
             if path == "/api/services":
                 return self._send(200, {k: s.info() for k, s in by_key.items()})
+            if path == "/api/llm":
+                return self._send(200, LLM_INFO)
             if path.startswith("/fonts/"):
                 full = os.path.normpath(os.path.join(FONTS, path[len("/fonts/"):]))
                 if full.startswith(FONTS) and os.path.isfile(full) and full.endswith(".ttf"):
@@ -196,8 +214,28 @@ def main():
     ap.add_argument("--part3-port", type=int, default=int(os.getenv("UI_PORT", "8765")))
     ap.add_argument("--api-port", type=int, default=8000)
     ap.add_argument("--only", choices=["part12", "part3"], help="فقط یکی از دموها")
+    ap.add_argument("--llm", type=profiles.normalize, default=profiles.current(),
+                    help="مدل دموها: offline | 9router | lmstudio (پیش‌فرض: LLM_PROFILE در .env، وگرنه offline)")
+    ap.add_argument("--proxy-port", type=int, default=8711, help="پورت پراکسی LLM برای دموی بخش ۱ و ۲")
     ap.add_argument("--no-browser", action="store_true")
     a = ap.parse_args()
+
+    if a.llm != "offline":
+        why = profiles.missing_reason(a.llm)
+        if why:
+            log(f"✗ حالت {a.llm}: {why}. با --llm offline اجرا کنید یا .env را کامل کنید.")
+            sys.exit(1)
+        cfg = profiles.config(a.llm)
+        LLM_INFO.update(profile=a.llm, label=cfg["label"], model=cfg["model"])
+        if port_busy(a.proxy_port):
+            log(f"پورت {a.proxy_port} (پراکسی LLM) گرفته است؛ با --proxy-port پورت دیگری بدهید.")
+            sys.exit(1)
+        from launcher import llm_proxy
+        llm_proxy.start(cfg, a.proxy_port, log)
+        ok = http_ok(f"http://127.0.0.1:{a.proxy_port}/v1/models", timeout=8)
+        log(f"مدل: {cfg['label']} · {cfg['model']} · {cfg['base_url']}" + ("" if ok else "  ⚠ الان جواب نمی‌دهد؛ اول آن را روشن کنید"))
+    else:
+        log("مدل: آفلاین (mock قطعی، بدون اینترنت و کلید)")
 
     services = build_services(a)
     if port_busy(a.home_port):

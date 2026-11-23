@@ -1,5 +1,7 @@
-"""بخش احتمالاتی: مدل پایه. MODE=offline مدل ساختگی (بدون اینترنت)؛ MODE=real هر API سازگار با OpenAI."""
-import json, os, random, re, time, urllib.request
+"""بخش احتمالاتی: مدل پایه. MODE=offline مدل ساختگی (بدون اینترنت)؛ MODE=9router | lmstudio | real هر API سازگار با OpenAI.
+پروفایل‌ها و کلیدها: assistant/profiles.py و فایل .env ریشهٔ مخزن (در git نیست)."""
+import json, os, random, re, time, urllib.error, urllib.request
+from . import profiles
 from .textutil import norm, order_ids, to_fa
 
 PROMPTS = {
@@ -30,8 +32,20 @@ def prompt_version():
         return "support-v4"
     return os.getenv("PROMPT_VERSION", "support-v3")
 
+# راهنمای اضافه فقط برای مدل واقعی (مدل‌های کوچک مثل qwen3-4b بدون آن در حلقهٔ retrieve می‌مانند).
+# در حالت آفلاین اضافه نمی‌شود تا عددهای mock (token، هزینه، تأخیر) همان عددهای ارائه بمانند.
+LIVE_GUIDE = """راهنمای ابزار: وضعیت سفارش ← {"action":"tool","tool":"get_order_status","args":{"order_id":"1042"}}؛ بازپرداخت ← request_refund با order_id و reason.
+ترتیب کار: (۱) اگر «مشاهدات» خالی است: پرسش سفارش ← ابزار؛ پرسش آیین‌نامه (مهلت، هزینه، ارسال، لغو، ضمانت…) ← retrieve. بدون مشاهده finish نکن.
+(۲) اگر مشاهدهٔ مرتبط آمد (tool، retrieve یا quarantined)، همان لحظه finish کن؛ برای quarantined، answer همان نام متغیر (مثل $DOC1) و sources همان source باشد. یک کنش را تکرار نکن.
+"""
+
 def system_prompt():
-    return PROMPTS[prompt_version()]
+    p = PROMPTS[prompt_version()]
+    if profiles.is_live():
+        if prompt_version() == "support-v3":
+            p = p.replace("\nقواعد:", "\n" + LIVE_GUIDE + "قواعد:", 1)
+        p += "\nزبان پاسخ (answer) همیشه فارسی است."   # بعضی مدل‌های combo بدون این، به زبان دیگری جواب می‌دهند
+    return p
 
 HIDDEN = re.compile(r"<!--(.*?)-->", re.S)
 
@@ -166,25 +180,84 @@ class MockLLM:
         return json.dumps({"action": "finish", "final": {"status": status, "answer": to_fa(answer) if ("http" not in answer and "$DOC" not in answer) else answer,
                                                           "sources": sources, "order_id": oid}}, ensure_ascii=False)
 
-class RealLLM:
-    """هر سرویس سازگار با OpenAI Chat Completions (OPENAI_API_KEY، OPENAI_BASE_URL، OPENAI_MODEL)."""
-    def __init__(self, model=None):
-        self.key = os.environ["OPENAI_API_KEY"]
-        self.base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-        self.name = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+THINK = re.compile(r"<think>.*?(</think>|$)", re.S)
 
-    def complete(self, messages, timeout=60):
-        body = json.dumps({"model": self.name, "messages": messages, "temperature": 0}).encode()
-        req = urllib.request.Request(self.base + "/chat/completions", data=body, headers={
-            "Authorization": f"Bearer {self.key}", "Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return json.load(r)["choices"][0]["message"]["content"]
+def strip_think(text):
+    """Qwen3 و مدل‌های استدلالی ممکن است <think>…</think> بنویسند؛ قبل از parse و اعتبارسنجی JSON حذف می‌شود."""
+    return THINK.sub("", text or "").strip()
+
+class RealLLM:
+    """هر سرویس سازگار با OpenAI Chat Completions، با پروفایل 9router / lmstudio / real (OPENAI_*).
+    فراخوانی تابع (function calling) لازم نیست: مدل همان کنش JSON دمو را برمی‌گرداند و schema آن را بررسی می‌کند."""
+    def __init__(self, model=None, profile=None):
+        cfg = profiles.config(profile or profiles.current()) or profiles.config("real")
+        self.profile, self.base, self.key = cfg["name"], cfg["base_url"], cfg["api_key"]
+        self.no_think = cfg["no_think"]
+        self.timeout = int(os.getenv("LLM_TIMEOUT_S", "120"))
+        self.name = model or cfg["model"]
+
+    def complete(self, messages, timeout=None):
+        msgs = [dict(m) for m in messages]
+        if self.no_think and msgs and msgs[0]["role"] == "system":
+            msgs[0]["content"] += "\n/no_think"          # Qwen3: خاموش کردن حالت think
+        body = json.dumps({"model": self.name, "messages": msgs, "temperature": 0, "stream": False}, ensure_ascii=False).encode("utf-8")
+        headers = {"Content-Type": "application/json"}
+        if self.key:
+            headers["Authorization"] = f"Bearer {self.key}"
+        req = urllib.request.Request(self.base + "/chat/completions", data=body, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=timeout or self.timeout) as r:
+                text = r.read().decode("utf-8", "replace")
+            # بعضی routerها حتی با stream=false یک «data: [DONE]» آخر پاسخ می‌گذارند؛ فقط اولین شیء JSON خوانده می‌شود
+            msg = json.JSONDecoder().raw_decode(text.lstrip())[0]["choices"][0]["message"]
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", "replace")[:200]
+            raise OSError(f"{self.profile}: HTTP {e.code} {detail}") from None
+        return strip_think(msg.get("content") or "")
+
+class FaultInjectedLLM:
+    """تزریق خطا روی مدل واقعی: برای خطاهای رفتاری مدل (loop، runaway، bad_json، off_scope_output) خروجی معیوب
+    از همان مولد mock می‌آید تا Controller و Gateway با مدل واقعی هم قابل نمایش باشند. بقیهٔ فراخوانی‌ها به مدل واقعی می‌رود."""
+    FAULTS = ("loop", "runaway", "bad_json", "off_scope_output")
+
+    def __init__(self, real, fault):
+        self.real, self.fault = real, fault
+        self.mock = MockLLM("fault-injector", fault, 0, random.Random(int(os.getenv("SEED", "7"))))
+        self.name = f"{real.name} +fault:{fault}"
+
+    def complete(self, messages):
+        is_planner = not messages[0]["content"].startswith("QUARANTINE")
+        if is_planner and (self.fault != "bad_json" or self.mock.calls == 0):
+            return self.mock.complete(messages)
+        return self.real.complete(messages)
+
+class FirstAvailable:
+    """اول provider اول؛ اگر در دسترس نبود (OSError)، دومی. name همانی است که واقعاً جواب داد."""
+    def __init__(self, a, b):
+        self.a, self.b, self.name = a, b, a.name
+
+    def complete(self, messages):
+        try:
+            out = self.a.complete(messages); self.name = self.a.name
+        except OSError:
+            out = self.b.complete(messages); self.name = self.b.name
+        return out
 
 def make_providers(fault=None):
-    """دو provider پشت AI Gateway: اصلی (بزرگ) و پشتیبان/کوچک (ارزان‌تر)."""
-    if os.getenv("MODE", "offline") == "real":
-        return (RealLLM(os.getenv("OPENAI_MODEL", "gpt-4o-mini")),
-                RealLLM(os.getenv("OPENAI_FALLBACK_MODEL", os.getenv("OPENAI_MODEL", "gpt-4o-mini"))))
+    """دو provider پشت AI Gateway: اصلی (بزرگ) و پشتیبان/کوچک (ارزان‌تر).
+    در پروفایل زنده، پشتیبان می‌تواند پروفایل دیگری باشد (مثلاً 9router → LM Studio با NINEROUTER_FALLBACK_PROFILE=lmstudio)."""
+    mode = profiles.current()
+    if mode in profiles.LIVE:
+        cfg = profiles.config(mode)
+        primary = RealLLM(cfg["model"], mode)
+        if cfg["fallback"] != mode and cfg["fallback"] in profiles.LIVE:
+            # پشتیبان = پروفایل دیگر؛ اگر آن هم در دسترس نبود، مدل کوچکِ همین پروفایل
+            secondary = FirstAvailable(RealLLM(None, cfg["fallback"]), RealLLM(cfg["small_model"], mode))
+        else:
+            secondary = RealLLM(cfg["small_model"], mode)
+        if fault in FaultInjectedLLM.FAULTS:
+            primary = FaultInjectedLLM(primary, fault)
+        return primary, secondary
     seed = int(os.getenv("SEED", "7"))
     lat = int(os.getenv("MOCK_LATENCY_MS", "150"))
     return (MockLLM("mock-llm-large", fault, lat, random.Random(seed)),

@@ -6,6 +6,8 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
 from assistant.agent import Agent
+from assistant import profiles
+profiles.load_dotenv()   # کلیدها از .env ریشه (در git نیست)
 try: sys.stdout.reconfigure(encoding="utf-8")
 except Exception: pass
 
@@ -34,14 +36,20 @@ class Env:
             else: os.environ[k] = v
 
 def status():
-    key = bool(os.getenv("OPENAI_API_KEY"))
-    return {"key_present": key, "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-            "base_url": os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"), "default_mode": os.getenv("MODE", "offline")}
+    """وضعیت پروفایل‌ها برای UI؛ هیچ کلیدی برگردانده نمی‌شود."""
+    st = profiles.public_status()
+    real = st["profiles"]["real"]
+    st.update(key_present=real["ready"], model=real["model"], base_url=real["base_url"])   # سازگاری با نسخهٔ قبل
+    return st
 
 def mode_env(mode):
-    if mode == "real" and not os.getenv("OPENAI_API_KEY"):
-        raise ModeError("حالت مدل واقعی: OPENAI_API_KEY تنظیم نشده است. سوییچ را روی آفلاین بگذارید یا کلید را در محیط تعریف کنید.")
-    return "real" if mode == "real" else "offline"
+    m = profiles.normalize(mode)
+    if m == "offline":
+        return "offline"
+    why = profiles.missing_reason(m)
+    if why:
+        raise ModeError(f"حالت {profiles.config(m)['label']}: {why}. سوییچ را روی آفلاین بگذارید.")
+    return m
 
 def clear_mem(customer):
     p = os.path.join(BASE, "sessions", f"{customer}.json")

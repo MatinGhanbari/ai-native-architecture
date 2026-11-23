@@ -15,6 +15,8 @@ git submodule update --init --recursive
 
 ساده‌ترین راه، اجرای هر دو دمو از ریشهٔ مخزن است: `python run_all.py`. صفحهٔ شروع روی http://127.0.0.1:8700 باز می‌شود. این دمو روی http://127.0.0.1:3000 و نمای C4 روی http://127.0.0.1:3000/architecture است. لانچر هیچ فایلی از submodule را تغییر نمی‌دهد.
 
+حالت مدل با `python run_all.py --llm offline|9router|lmstudio` انتخاب می‌شود. پیش‌فرض `LLM_PROFILE` در `.env` ریشه است. لانچر `LLM_PROVIDER`، `LLM_BASE_URL` و `LLM_MODEL` را به backend می‌دهد که از `backend/.env` اولویت دارند. در حالت زنده، backend به پراکسی لانچر (`127.0.0.1:8711`) وصل می‌شود. کلید واقعی فقط دست پراکسی است. پراکسی `<think>` را حذف می‌کند، `stream=false` می‌گذارد و `/embeddings` را می‌بندد تا embedding همیشه محلی بماند. اگر provider خاموش باشد، این دمو خودش به mock برمی‌گردد و badge صفحه دلیلش را نشان می‌دهد.
+
 اجرای دستی طبق `software-architecture-demo/README.md` است: backend روی پورت 8000 و frontend روی پورت 3000.
 
 ### نصب یک‌باره (اگر روی سیستم جدید هستید)

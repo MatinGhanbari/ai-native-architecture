@@ -512,7 +512,9 @@ def default_paths(root: Path, parts_only: bool) -> list[Path]:
         root / "part-02" / "slides" / "part-02.pptx",
     )
     part3 = _first_existing(
+        root / "part-03_control-quality" / "slides" / "part-03_v4.pptx",
         root / "part-03_control-quality" / "slides" / "part-03_v3.pptx",
+        root / "part-03_control-quality" / "slides" / "archive" / "part-03_v3.pptx",
         root / "part-03_control-quality" / "slides" / "part-03_v2.pptx",
         root / "part-03_control-quality" / "slides" / "part-03_v1.pptx",
         root / "part-03_control-quality" / "slides" / "part-03.pptx",

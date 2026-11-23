@@ -1,0 +1,3 @@
+[submodule "part-01-02_demo/software-architecture-demo"]
+	path = part-01-02_demo/software-architecture-demo
+	url = https://github.com/SArshiaK/software-architecture-demo.git

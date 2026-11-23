@@ -18,6 +18,8 @@ shared/fonts/*
 !shared/fonts/README.md
 demo/ui/fonts/AradFDVF.ttf
 demo/ui/fonts/AradFDVF*.ttf
+**/AradFDVF.ttf
+**/AradFDVF*.ttf
 
 # Demo runtime (ui_cache/ is kept: precomputed offline results)
 demo/sessions/

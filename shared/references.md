@@ -1,6 +1,6 @@
 # منابع (سبک IEEE)
 
-شماره‌گذاری زیر با اسلایدهای ارائه یکی است. `[1]` تا `[16]` از نسخهٔ یکپارچهٔ قبلی می‌آیند.
+شماره‌گذاری زیر با اسلایدهای ارائه یکی است. `[1]` تا `[16]` از نسخهٔ یکپارچهٔ قبلی می‌آیند. `[17]` تا `[25]` در اسلایدهای بخش ۳ نسخهٔ ۲ اضافه شده‌اند.
 
 قبل از ارائه، شمارهٔ فصل کتاب‌ها را با نسخهٔ کتابخانه چک کنید. متن کامل Bass و Ford و Huyen در مرحلهٔ پژوهش در دسترس نبود. منابع arXiv با برچسب preprint مشخص شده‌اند.
 
@@ -37,6 +37,24 @@
 [15] F. Bang, "GPTCache: An open-source semantic cache for LLM applications enabling faster answers and cost savings," in *Proc. 3rd Workshop for NLP Open Source Software (NLP-OSS)*, 2023, pp. 212–218.
 
 [16] Model Context Protocol, "Specification," version 2026-07-28. [Online]. Available: https://modelcontextprotocol.io/specification
+
+[17] S. Willison, "The lethal trifecta for AI agents: private data, untrusted content, and external communication," Jun. 16, 2025. [Online]. Available: https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/
+
+[18] S. Willison, "The Dual LLM pattern for building AI assistants that can resist prompt injection," Apr. 25, 2023. [Online]. Available: https://simonwillison.net/2023/Apr/25/dual-llm-pattern/
+
+[19] E. Debenedetti et al., "Defeating prompt injections by design," arXiv:2503.18813, 2025 (preprint).
+
+[20] L. Beurer-Kellner et al., "Design patterns for securing LLM agents against prompt injections," arXiv:2506.08837, 2025 (preprint).
+
+[21] R. Kazman, M. Klein, and P. Clements, "ATAM: Method for architecture evaluation," Software Engineering Institute, Carnegie Mellon Univ., Pittsburgh, PA, USA, Tech. Rep. CMU/SEI-2000-TR-004, 2000.
+
+[22] Meta AI, "Agents Rule of Two: A practical approach to AI agent security," Oct. 31, 2025. [Online]. Available: https://ai.meta.com/blog/practical-ai-agent-security/
+
+[23] E. Debenedetti, J. Zhang, M. Balunović, L. Beurer-Kellner, M. Fischer, and F. Tramèr, "AgentDojo: A dynamic environment to evaluate prompt injection attacks and defenses for LLM agents," in *NeurIPS Datasets and Benchmarks Track*, 2024.
+
+[24] S. Shankar, J. D. Zamfirescu-Pereira, B. Hartmann, A. G. Parameswaran, and I. Arawjo, "Who validates the validators? Aligning LLM-assisted evaluation of LLM outputs with human preferences," in *Proc. ACM UIST*, 2024.
+
+[25] National Institute of Standards and Technology, "Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile," NIST AI 600-1, Jul. 2024, doi: 10.6028/NIST.AI.600-1.
 
 ## منابع تکمیلی
 

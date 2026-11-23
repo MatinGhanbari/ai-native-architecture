@@ -28,7 +28,6 @@ async function busy(btn, fn) {
 }
 const pre = r => r && r.precomputed ? `<div class="tag warn" style="margin-top:6px">نتیجهٔ از پیش آماده (precomputed) · ${esc(r.cached_at || "")}${r.live_error ? " · اجرای زنده خطا داد" : ""}</div>` : "";
 const num = n => STEPS[n].lab;
-const MAIN = 6;   // مرحله‌های اصلی ۱ تا ۶؛ ۰ = نمای کلی اختیاری؛ بعد از ۶ = اضافه
 const errBox = e => `<div class="err">${esc(e.message || e)}</div>`;
 
 /* ---------- trace panel ---------- */
@@ -282,8 +281,8 @@ const STEP_E = { lab: "E", short: "هزینهٔ ماهانه", t: "هزینهٔ 
 
 const DM_C = [["هزینهٔ پاسخ غلط", ["الزام‌آور (حقوقی، مالی)", "متوسط و قابل‌بازگشت", "بالا، با تأیید انسانی"]], ["تنوع ورودی", ["ساخت‌یافته", "زبان طبیعی", "زبان طبیعی، چندمرحله‌ای"]],
   ["دادهٔ eval", ["لازم نیست", "regression set", "regression + پایش online"]], ["Rule of Two", ["هیچ‌کدام", "حداکثر دو ویژگی", "هر سه ویژگی"]], ["نیاز به determinism", ["بالا", "متوسط", "پایین"]]];
-const DM_O = ["منطق قطعی", "workflow + LLM با guard", "agent + انسان در حلقه"];
-const DM_P = { ship: { n: "پرسش «زمان ارسال»", v: [1, 1, 1, 1, 1] }, refund: { n: "«بازپرداخت وجه»", v: [0, 1, 1, 2, 0] } };
+const DM_O = ["کد معمولی (منطق قطعی)", "workflow + LLM با guard", "agent + انسان در حلقه"];
+const DM_P = { status: { n: "«وضعیت سفارش ۱۰۴۲»", v: [1, 0, 0, 0, 0] }, ship: { n: "پرسش «زمان ارسال»", v: [1, 1, 1, 1, 1] }, refund: { n: "«بازپرداخت وجه»", v: [0, 1, 1, 2, 0] } };
 const STEP_G = { lab: "G", short: "ماتریس تصمیم", t: "کِی سراغش برویم؟ ماتریس تصمیم (پیشنهاد ما)",
   d: "برای هر معیار، وضعیت سناریو را انتخاب کنید. این ماتریس ترکیبی از توصیه‌های Anthropic، Google و Meta است و اعتبارسنجی تجربی نشده؛ نقطهٔ شروع design review است.",
   arch: ["controller", "guard", "human"],
@@ -296,7 +295,7 @@ const STEP_G = { lab: "G", short: "ماتریس تصمیم", t: "کِی سراغ
       const cnt = [0, 0, 0]; v.forEach(x => cnt[x]++); let rec = cnt.indexOf(Math.max(...cnt)), why = [];
       if (v[0] === 0) { why.push("پاسخ الزام‌آور است: تصمیم با کد قطعی، LLM فقط برای فهم پرسش و نوشتن پاسخ"); }
       if (v[3] === 2) { why.push("هر سه ویژگی Rule of Two لازم است: اجرای عمل فقط با تأیید انسانی"); }
-      const txt = v[0] === 0 && v[3] === 2 ? "منطق قطعی + انسان در حلقه" : v[0] === 0 ? "منطق قطعی (LLM فقط در لایهٔ زبان)" : v[3] === 2 ? "agent + انسان در حلقه" : DM_O[rec];
+      const txt = v[0] === 0 && v[3] === 2 ? "کد قطعی + انسان در حلقه" : v[0] === 0 ? "کد قطعی (LLM فقط در لایهٔ زبان)" : v[3] === 2 ? "agent + انسان در حلقه" : DM_O[rec];
       $(".out", el).innerHTML = `<div class="res ${v[0] === 0 || v[3] === 2 ? "leak" : "safe"}"><div class="col-h">پیشنهاد: <span class="tag info">${bd(txt)}</span></div><div class="muted">امتیاز ستون‌ها: ${DM_O.map((o, i) => `${bd(o)} ${fa(cnt[i])}`).join(" · ")}</div>${why.map(w => `<div style="margin-top:4px">${bd(w)}</div>`).join("")}</div>`; };
     const preset = k => { DM_P[k].v.forEach((x, i) => el.querySelector(`input[name=dm${i}][value="${x}"]`).checked = true); calc(); };
     el.querySelectorAll("[data-p]").forEach(b => b.onclick = () => preset(b.dataset.p));
@@ -305,8 +304,8 @@ const STEP_G = { lab: "G", short: "ماتریس تصمیم", t: "کِی سراغ
 
 /* ترتیب بخش عملی v5: A تا G؛ ۰ = نمای کلی، + = اضافه */
 const L = (o, lab) => Object.assign(o, { lab });
-const STEPS = [L(STEPS0[0], "۰"), STEP_A, L(STEPS0[1], "B۱"), L(STEPS0[2], "B۲"), L(STEPS0[3], "C"), STEP_D1, L(STEPS0[6], "D۲"), STEP_E,
-  L(STEPS0[4], "F۱"), L(STEPS0[5], "F۲"), STEP_G, L(STEPS0[7], "+"), L(STEPS0[8], "+")];
+// ترتیب بلوک دموی بخش ۳ (نسخهٔ ۶): A، B۱، B۲، C، D، E، G. مرحله‌های دیگر در کد می‌مانند ولی نمایش داده نمی‌شوند.
+const STEPS = [STEP_A, L(STEPS0[1], "B۱"), L(STEPS0[2], "B۲"), L(STEPS0[3], "C"), L(STEPS0[5], "D"), STEP_E, STEP_G];
 
 /* ---------- navigation ---------- */
 function render() {
@@ -345,7 +344,7 @@ $("#resetBtn").onclick = async () => { await api("/api/reset", {}); render(); };
 (async () => {
   try { state.status = await api("/api/status"); } catch (e) { state.status = {}; }
   const h = new URLSearchParams(location.hash.slice(1));
-  state.i = Math.max(0, Math.min(STEPS.length - 1, (+h.get("s") || 2) - 1));
+  state.i = Math.max(0, Math.min(STEPS.length - 1, (+h.get("s") || 1) - 1));
   const dm = state.status.default_mode, dp = (state.status.profiles || {})[dm];
   setMode(dp && dp.ready && document.querySelector(`.seg [data-mode="${dm}"]`) ? dm : "offline");
   render();

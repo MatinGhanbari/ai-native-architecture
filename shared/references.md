@@ -56,6 +56,52 @@
 
 [25] National Institute of Standards and Technology, "Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile," NIST AI 600-1, Jul. 2024, doi: 10.6028/NIST.AI.600-1.
 
+[26] B. Atil et al., "Non-determinism of “deterministic” LLM settings," arXiv:2408.04667, 2024 (preprint).
+
+[27] S. Barnett, S. Kurniawan, S. Thudumu, Z. Brannelly, and M. Abdelrazek, "Seven failure points when engineering a retrieval augmented generation system," in Proc. 3rd Int. Conf. AI Engineering (CAIN), Lisbon, Portugal, 2024. arXiv:2401.05856
+
+[28] N. Nahar, C. Kästner, J. Butler, C. Parnin, T. Zimmermann, and C. Bird, "Beyond the comfort zone: Emerging solutions to overcome challenges in integrating LLMs into software products," arXiv:2410.12071, 2024 (preprint).
+
+[29] J. P. Bottaro and K. R., "Musings on building a generative AI product," LinkedIn Engineering Blog, Apr. 25, 2024. [Online]. Available: https://www.linkedin.com/blog/engineering/generative-ai/musings-on-building-a-generative-ai-product
+
+[30] Klarna, "Klarna AI assistant handles two-thirds of customer service chats in its first month," press release, Feb. 27, 2024. [Online]. Available: https://www.klarna.com/international/press/klarna-ai-assistant-handles-two-thirds-of-customer-service-chats-in-its-first-month/
+
+[31] K. Doerer, "Klarna changes its AI tune and again recruits humans for customer service," CX Dive, May 9, 2025. [Online]. Available: https://www.customerexperiencedive.com/news/klarna-reinvests-human-talent-customer-service-AI-chatbot/747586/
+
+[32] E. Brynjolfsson, D. Li, and L. R. Raymond, "Generative AI at work," Quarterly Journal of Economics, vol. 140, no. 2, pp. 889–942, 2025. NBER Working Paper 31161, doi: 10.3386/w31161.
+
+[33] S. Peng, E. Kalliamvakou, P. Cihon, and M. Demirer, "The impact of AI on developer productivity: Evidence from GitHub Copilot," arXiv:2302.06590, 2023 (preprint).
+
+[34] J. Becker, N. Rush, B. Barnes, and D. Rein, "Measuring the impact of early-2025 AI on experienced open-source developer productivity," METR, arXiv:2507.09089, 2025 (preprint).
+
+[35] L. Cecco, "Air Canada ordered to pay customer who was misled by airline's chatbot," The Guardian, Feb. 16, 2024. [Online]. Available: https://www.theguardian.com/world/2024/feb/16/air-canada-chatbot-lawsuit (Moffatt v. Air Canada, 2024 BCCRT 149)
+
+[36] C. Lecher, "NYC's AI chatbot tells businesses to break the law," The Markup, Mar. 29, 2024. [Online]. Available: https://themarkup.org/news/2024/03/29/nycs-ai-chatbot-tells-businesses-to-break-the-law
+
+[37] T. Gerken, "DPD error caused chatbot to swear at customer," BBC News, Jan. 19, 2024. [Online]. Available: https://www.bbc.com/news/technology-68025677
+
+[38] PromptArmor, "Data exfiltration from Slack AI via indirect prompt injection," Aug. 20, 2024. [Online]. Available: https://promptarmor.substack.com/p/data-exfiltration-from-slack-ai-via
+
+[39] M. Milanta and L. Beurer-Kellner, "GitHub MCP exploited: Accessing private repositories via MCP," Invariant Labs, May 26, 2025. [Online]. Available: https://invariantlabs.ai/blog/mcp-github-vulnerability
+
+[40] NIST National Vulnerability Database, "CVE-2025-32711: M365 Copilot information disclosure vulnerability," Jun. 11, 2025. [Online]. Available: https://nvd.nist.gov/vuln/detail/CVE-2025-32711
+
+[41] B. Cottier, B. Snodin, D. Owen, and T. Adamczewski, "LLM inference prices have fallen rapidly but unequally across tasks," Epoch AI, Mar. 12, 2025. [Online]. Available: https://epoch.ai/data-insights/llm-inference-price-trends
+
+[42] L. Chen, M. Zaharia, and J. Zou, "FrugalGPT: How to use large language models while reducing cost and improving performance," arXiv:2305.05176, 2023 (preprint).
+
+[43] Gartner, "Gartner predicts 30% of generative AI projects will be abandoned after proof of concept by end of 2025," press release, Jul. 29, 2024. [Online]. Available: https://www.gartner.com/en/newsroom/press-releases/2024-07-29-gartner-predicts-30-percent-of-generative-ai-projects-will-be-abandoned-after-proof-of-concept-by-end-of-2025
+
+[44] Gartner, "Gartner predicts over 40% of agentic AI projects will be canceled by end of 2027," press release, Jun. 25, 2025. [Online]. Available: https://www.gartner.com/en/newsroom/press-releases/2025-06-25-gartner-predicts-over-40-percent-of-agentic-ai-projects-will-be-canceled-by-end-of-2027
+
+[45] OpenAI, "Deprecations," OpenAI API documentation. [Online]. Available: https://platform.openai.com/docs/deprecations (accessed Nov. 23, 2026)
+
+[46] European Parliament and Council, "Regulation (EU) 2024/1689 laying down harmonised rules on artificial intelligence (Artificial Intelligence Act)," Official Journal of the European Union, L series, Jul. 12, 2024. [Online]. Available: https://eur-lex.europa.eu/eli/reg/2024/1689/oj
+
+[47] E. Schluntz and B. Zhang, "Building effective agents," Anthropic, Dec. 19, 2024. [Online]. Available: https://www.anthropic.com/engineering/building-effective-agents
+
+[48] M. Zinkevich, "Rules of machine learning: Best practices for ML engineering," Google for Developers. [Online]. Available: https://developers.google.com/machine-learning/guides/rules-of-ml
+
 ## منابع تکمیلی
 
 این‌ها در شماره‌گذاری اسلایدها نیستند، اما در پژوهش بخش ۳ استفاده شده‌اند.

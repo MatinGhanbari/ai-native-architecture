@@ -1,19 +1,25 @@
 """لانچر یکپارچهٔ دموها (فقط stdlib، سازگار با ویندوز).
 
 سرویس‌ها:
-  part3        دموی بخش ۳ (demo/run_ui.py)                 http://127.0.0.1:8765
-  part12-api   backend دموی بخش ۱ و ۲ (FastAPI/uvicorn)      http://127.0.0.1:8000
-  part12-web   frontend دموی بخش ۱ و ۲ (Next.js dev)         http://127.0.0.1:3000
-  home         صفحهٔ شروع همین لانچر                         http://127.0.0.1:8700
+  home         صفحهٔ شروع همین لانچر + دموی بخش ۱ (/part1/)    http://127.0.0.1:8080
+  part12-web   frontend دموی بخش ۲ (Next.js dev)             http://127.0.0.1:8082
+  part12-api   backend دموی بخش ۲ (FastAPI/uvicorn)          http://127.0.0.1:8083
+  part3        دموی بخش ۳ (demo/run_ui.py)                     http://127.0.0.1:8084
+  (پراکسی LLM بخش ۲ فقط در حالت زنده)                          http://127.0.0.1:8085
+همهٔ پورت‌ها در بازهٔ 8080 تا 8090 و ثابت‌اند؛ هر کدام با گزینهٔ خودش عوض می‌شود.
 """
 import argparse, importlib.util, json, os, shutil, signal, socket, subprocess, sys, threading, time, urllib.request, webbrowser
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-SUB = os.path.join(ROOT, "part-01-02_demo", "software-architecture-demo")
+SUB = os.path.join(ROOT, "part-02", "demo", "software-architecture-demo")   # دموی بخش ۲ (submodule آرشیا)
 DEMO3 = os.path.join(ROOT, "demo")
 FONTS = os.path.join(DEMO3, "ui", "fonts")
+PART1 = os.path.join(ROOT, "part-01", "demo")   # دموی بخش اول: نمای C4 (HTML محلی)
+MIME = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".woff2": "font/woff2", ".svg": "image/svg+xml", ".png": "image/png"}
+# اجرای بدون اینترنت: مدل embedding از cache محلی Hugging Face خوانده می‌شود (یک بار از قبل دانلود شده است)
+OFFLINE_ENV = {"HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1", "HF_HUB_DISABLE_TELEMETRY": "1"}
 LOGS = os.path.join(HERE, "logs")
 WIN = os.name == "nt"
 
@@ -57,8 +63,9 @@ def venv_python(backend):
 
 
 class Service:
-    def __init__(self, key, title, port, health, cmd_fn, cwd, env=None, timeout=180):
+    def __init__(self, key, title, port, health, cmd_fn, cwd, env=None, timeout=180, fallback_env=None):
         self.key, self.title, self.port, self.health = key, title, port, health
+        self.fallback_env = fallback_env   # اگر پروسه بالا نیامد، یک بار دیگر با این env (حالت mock) اجرا می‌شود
         self.cmd_fn, self.cwd, self.env, self.timeout = cmd_fn, cwd, env or {}, timeout
         self.proc, self.state, self.note, self.external = None, "stopped", "", False
 
@@ -99,6 +106,8 @@ class Service:
         t0 = time.time()
         while time.time() - t0 < self.timeout:
             if self.proc.poll() is not None:
+                if self._fallback():
+                    return
                 self.state, self.note = "error", f"پروسه بسته شد (کد {self.proc.returncode}). لاگ: launcher/logs/{self.key}.log"
                 log(f"✗ {self.title}: {self.note}")
                 return
@@ -107,8 +116,20 @@ class Service:
                 log(f"✓ {self.title} آماده شد ({int(time.time() - t0)} ثانیه): {self.url}")
                 return
             time.sleep(1)
+        if self._fallback():
+            return
         self.state, self.note = "error", f"بعد از {self.timeout} ثانیه جواب نداد. لاگ: launcher/logs/{self.key}.log"
         log(f"✗ {self.title}: {self.note}")
+
+    def _fallback(self):
+        if not self.fallback_env:
+            return False
+        log(f"⚠ {self.title} بالا نیامد؛ دوباره در حالت mock اجرا می‌شود ({self.fallback_env})")
+        self.stop()
+        self.env, self.fallback_env = {**self.env, **self.fallback_env}, None
+        self.note = "حالت mock (پشتیبان)"
+        self.start()
+        return True
 
     def stop(self):
         p = self.proc
@@ -142,7 +163,7 @@ def build_services(a):
             venv_python(backend),
             "-m",
             "uvicorn",
-            "app.main:app",
+            "part2_api:app",   # همان app.main:app، به‌علاوهٔ mock پشتیبان embedding (launcher/part2_api.py)
             "--reload",
             "--host",
             "127.0.0.1",
@@ -157,24 +178,30 @@ def build_services(a):
             svc_web.state = "missing"
             svc_web.note = "node_modules نصب نیست؛ یک بار در frontend دستور npm install را اجرا کنید" if node else "Node.js نصب نیست"
             return None
-        # پورت 3000 ثابت است: CORS در backend فقط localhost:3000 و 127.0.0.1:3000 را قبول می‌کند.
-        return [node, next_bin, "dev", "--turbopack", "-p", "3000", "-H", "127.0.0.1"]
+        # CORS این پورت را launcher/part2_api.py (با DEMO_WEB_ORIGINS) به backend اضافه می‌کند؛ submodule دست نمی‌خورد.
+        # بدون --turbopack: فقط حالت webpack فایل فونت mock را از دیسک می‌خواند (turbopack آن را از اینترنت می‌خواهد)
+        return [node, next_bin, "dev", "-p", str(a.web_port), "-H", "127.0.0.1"]
 
     svc3 = Service("part3", "دموی بخش ۳", a.part3_port, f"http://127.0.0.1:{a.part3_port}/api/status", part3_cmd, DEMO3,
                    {"UI_PORT": str(a.part3_port), "LLM_PROFILE": a.llm}, timeout=60)
     if a.llm == "offline":
         api_env = {"LLM_PROVIDER": "mock"}
-    else:   # backend بخش ۱ و ۲ از پراکسی لانچر استفاده می‌کند؛ کلید واقعی به آن پروسه داده نمی‌شود
+    else:   # backend بخش ۲ از پراکسی لانچر استفاده می‌کند؛ کلید واقعی به آن پروسه داده نمی‌شود
         cfg = profiles.config(a.llm)
         api_env = {"LLM_PROVIDER": "openai", "LLM_BASE_URL": f"http://127.0.0.1:{a.proxy_port}/v1",
                    "LLM_API_KEY": "via-launcher-proxy", "LLM_MODEL": cfg["model"], "EMBEDDING_MODEL": "local-only"}
-    svc_api = Service("part12-api", "backend بخش ۱ و ۲", a.api_port, f"http://127.0.0.1:{a.api_port}/health", api_cmd, backend,
-                      api_env, timeout=300)
-    svc_web = Service("part12-web", "frontend بخش ۱ و ۲", 3000, "http://127.0.0.1:3000/", web_cmd, frontend,
-                      {"NEXT_PUBLIC_API_BASE_URL": f"http://127.0.0.1:{a.api_port}", "NEXT_TELEMETRY_DISABLED": "1"},
+    svc_api = Service("part12-api", "backend بخش ۲", a.api_port, f"http://127.0.0.1:{a.api_port}/health", api_cmd, backend,
+                      {**api_env, **OFFLINE_ENV, "DEMO_EMBEDDINGS": a.embeddings, "PYTHONHASHSEED": "0",
+                       "DEMO_WEB_ORIGINS": f"http://127.0.0.1:{a.web_port},http://localhost:{a.web_port}",
+                       "PYTHONPATH": HERE + os.pathsep + os.environ.get("PYTHONPATH", "")},
+                      timeout=300, fallback_env={"DEMO_EMBEDDINGS": "mock"} if a.embeddings == "auto" else None)
+    svc_web = Service("part12-web", "frontend بخش ۲", a.web_port, f"http://127.0.0.1:{a.web_port}/", web_cmd, frontend,
+                      {"NEXT_PUBLIC_API_BASE_URL": f"http://127.0.0.1:{a.api_port}", "NEXT_TELEMETRY_DISABLED": "1",
+                       # بدون اینترنت: next/font/google فونت‌ها را از فایل‌های محلی می‌خواند (بدون تغییر در submodule)
+                       "NEXT_FONT_GOOGLE_MOCKED_RESPONSES": os.path.join(HERE, "next_font_mock.js")},
                       timeout=300)
     out = []
-    if a.only in (None, "part12"):
+    if a.only in (None, "part2", "part12"):
         out += [svc_api, svc_web]
     if a.only in (None, "part3"):
         out.append(svc3)
@@ -213,6 +240,13 @@ def make_handler(services):
                 full = os.path.normpath(os.path.join(FONTS, path[len("/fonts/"):]))
                 if full.startswith(FONTS) and os.path.isfile(full) and full.endswith(".ttf"):
                     return self._send(200, open(full, "rb").read(), "font/ttf")
+            if path.startswith("/part1/"):
+                rel = path[len("/part1/"):]
+                rel = rel[len("demo/"):] if rel.startswith("demo/") else rel   # /part1/demo/... هم کار کند
+                full = os.path.normpath(os.path.join(PART1, rel or "c4-explorer.html"))
+                ext = os.path.splitext(full)[1]
+                if full.startswith(PART1 + os.sep) and os.path.isfile(full) and ext in MIME:
+                    return self._send(200, open(full, "rb").read(), MIME[ext])
             self._send(404, {"error": "not found"})
 
     return H
@@ -220,13 +254,16 @@ def make_handler(services):
 
 def main():
     ap = argparse.ArgumentParser(description="اجرای هر دو دمو + صفحهٔ شروع")
-    ap.add_argument("--home-port", type=int, default=int(os.getenv("HOME_PORT", "8700")))
-    ap.add_argument("--part3-port", type=int, default=int(os.getenv("UI_PORT", "8765")))
-    ap.add_argument("--api-port", type=int, default=8000)
-    ap.add_argument("--only", choices=["part12", "part3"], help="فقط یکی از دموها")
+    ap.add_argument("--home-port", type=int, default=int(os.getenv("HOME_PORT", "8080")))
+    ap.add_argument("--part3-port", type=int, default=8084, help="پورت دموی بخش ۳")
+    ap.add_argument("--web-port", type=int, default=8082, help="پورت frontend دموی بخش ۲")
+    ap.add_argument("--api-port", type=int, default=8083, help="پورت backend دموی بخش ۲")
+    ap.add_argument("--only", choices=["part2", "part12", "part3"], help="فقط یکی از دموها (part12 نام قدیمی part2 است)")
+    ap.add_argument("--embeddings", choices=["auto", "local", "mock"], default=os.getenv("DEMO_EMBEDDINGS", "auto"),
+                    help="embedding دموی بخش ۲: auto = مدل محلی و در صورت خطا mock (پیش‌فرض) | local | mock")
     ap.add_argument("--llm", type=profiles.normalize, default=profiles.current(),
                     help="مدل دموها: offline | 9router | lmstudio (پیش‌فرض: LLM_PROFILE در .env، وگرنه offline)")
-    ap.add_argument("--proxy-port", type=int, default=8711, help="پورت پراکسی LLM برای دموی بخش ۱ و ۲")
+    ap.add_argument("--proxy-port", type=int, default=8085, help="پورت پراکسی LLM برای دموی بخش ۲")
     ap.add_argument("--no-browser", action="store_true")
     a = ap.parse_args()
 
@@ -248,11 +285,14 @@ def main():
         log("مدل: آفلاین (mock قطعی، بدون اینترنت و کلید)")
 
     services = build_services(a)
+    busy = [f"{n}={p}" for n, p in (("home", a.home_port), ("part2-web", a.web_port), ("part2-api", a.api_port), ("part3", a.part3_port)) if port_busy(p)]
+    if busy:
+        log("⚠ این پورت‌ها از قبل گرفته شده‌اند: " + ", ".join(busy) + " (اگر دموی خودمان باشد همان استفاده می‌شود)")
     if port_busy(a.home_port):
         log(f"پورت {a.home_port} گرفته است؛ با --home-port پورت دیگری بدهید.")
         sys.exit(1)
 
-    log("در حال بالا آوردن دموها… (بار اول backend بخش ۱ و ۲ مدل embedding را بار می‌کند و ممکن است ۳۰ تا ۹۰ ثانیه طول بکشد)")
+    log("در حال بالا آوردن دموها… (بار اول backend بخش ۲ مدل embedding را بار می‌کند و ممکن است ۳۰ تا ۹۰ ثانیه طول بکشد)")
     for s in services:
         s.start()
         if s.state in ("missing", "error") or s.external:

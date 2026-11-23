@@ -1,4 +1,4 @@
-"""پراکسی کوچک OpenAI-compatible برای دموی بخش ۱ و ۲ (بدون تغییر کد submodule).
+"""پراکسی کوچک OpenAI-compatible برای دموی بخش ۲ (بدون تغییر کد submodule).
 
 backend آن دمو به‌جای سرویس اصلی به این پراکسی وصل می‌شود (LLM_BASE_URL=http://127.0.0.1:<port>/v1).
 کارها:

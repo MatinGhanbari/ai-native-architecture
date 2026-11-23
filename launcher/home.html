@@ -55,7 +55,7 @@ footer{padding:10px 22px;color:var(--muted);font-size:14px;text-align:center;bor
       <p>نمای تعاملی <span class="lat">C4</span>: زوم لایه‌به‌لایه روی مؤلفه‌های دستیار فروشگاه و تصمیم‌های معماری (ADR).</p>
       <div class="st" id="st1"></div>
       <div class="actions">
-        <a class="btn go" id="go1" href="http://127.0.0.1:3000/architecture" target="_blank" rel="noopener" aria-disabled="true">باز کردن دمو</a>
+        <a class="btn go" id="go1" href="/part1/c4-explorer.html" target="_blank" rel="noopener" aria-disabled="false">باز کردن دمو</a>
       </div>
     </section>
     <section class="card" id="c12">
@@ -63,7 +63,8 @@ footer{padding:10px 22px;color:var(--muted);font-size:14px;text-align:center;bor
       <p>دستیار پشتیبانی فروشگاه: نقشهٔ اجرای درخواست (RAG، ابزار سفارش، حافظه، ارجاع انسانی).</p>
       <div class="st" id="st12"></div>
       <div class="actions">
-        <a class="btn go" id="go12" href="http://127.0.0.1:3000/" target="_blank" rel="noopener" aria-disabled="true">باز کردن دمو</a>
+        <a class="btn go" id="go12" href="http://127.0.0.1:8082/" target="_blank" rel="noopener" aria-disabled="true">باز کردن دمو</a>
+        <a class="btn ghost" id="go12b" href="http://127.0.0.1:8082/architecture" target="_blank" rel="noopener" aria-disabled="true">نمودار معماری</a>
       </div>
     </section>
     <section class="card" id="c3">
@@ -71,7 +72,7 @@ footer{padding:10px 22px;color:var(--muted);font-size:14px;text-align:center;bor
       <p>کنترل، کیفیت، امنیت و تکامل: تزریق غیرمستقیم، رگرسیون، بودجهٔ گام و قطعی سرویس.</p>
       <div class="st" id="st3"></div>
       <div class="actions">
-        <a class="btn go" id="go3" href="http://127.0.0.1:8765/" target="_blank" rel="noopener" aria-disabled="true">باز کردن دمو</a>
+        <a class="btn go" id="go3" href="http://127.0.0.1:8084/" target="_blank" rel="noopener" aria-disabled="true">باز کردن دمو</a>
       </div>
     </section>
   </div>
@@ -91,13 +92,13 @@ async function poll(){
   try{all=await (await fetch("/api/services",{cache:"no-store"})).json();}catch(e){}
   const a=all["part12-api"],w=all["part12-web"],p=all["part3"];
   const st1=document.getElementById("st1"),st12=document.getElementById("st12"),st3=document.getElementById("st3");
-  st1.replaceChildren(...[w].filter(Boolean).map(line));
+  st1.replaceChildren(line({title:"نمای C4 (فایل محلی، بدون سرور جدا)",state:"ready"}));
   st12.replaceChildren(...[a,w].filter(Boolean).map(line));
   st3.replaceChildren(...[p].filter(Boolean).map(line));
-  if(!a&&!w){st12.replaceChildren(line({title:"دمو",state:"stopped"}));st1.replaceChildren(line({title:"دمو",state:"stopped"}));}
+  if(!a&&!w){st12.replaceChildren(line({title:"دمو",state:"stopped"}));}
   if(!p)st3.replaceChildren(line({title:"دمو",state:"stopped"}));
-  setLinks(["go12"],!!(w&&w.state==="ready"),w&&w.url);
-  setLinks(["go1"],!!(w&&w.state==="ready"),w&&(w.url+"architecture"));
+  setLinks(["go12","go12b"],!!(w&&w.state==="ready"),w&&w.url);
+  if(w&&w.url)document.getElementById("go12b").href=w.url+"architecture";
   setLinks(["go3"],!!(p&&p.state==="ready"),p&&p.url);
   const done=[a,w,p].filter(Boolean).every(s=>s.state!=="starting");
   setTimeout(poll,done?5000:1500);

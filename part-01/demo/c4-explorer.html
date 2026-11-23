@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>دستیار پشتیبانی فروشگاه | معماری AI-Native (C4 Explorer)</title>
+
+  <!-- فونت فارسی Vazirmatn و فونت کدنویسی JetBrains Mono -->
+  <!-- نسخهٔ محلی (بدون اینترنت): فایل‌ها در پوشهٔ vendor کنار همین فایل -->
+  <link href="vendor/fonts.css" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="vendor/tailwindcss-play.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Vazirmatn', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+          },
+          colors: {
+            det: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+            },
+            prob: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+            },
+            trust: {
+              50: '#fff1f2',
+              500: '#f43f5e',
+              600: '#e11d48',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* پس‌زمینه نقطه‌دار شبیه ابزارهای نمایش معماری C4 و Excalidraw */
+    .c4-canvas-bg {
+      background-color: #f8fafc;
+      background-image: radial-gradient(#cbd5e1 1.15px, transparent 1.15px);
+      background-size: 22px 22px;
+    }
+
+    /* اسکرول‌بار ظریف */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* افکت کارت‌های معماری */
+    .c4-node {
+      transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.22s ease, border-color 0.2s ease;
+    }
+    .c4-node:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px -8px rgba(15, 23, 42, 0.12);
+    }
+
+    /* حالت کم‌رنگ هنگام فیلتر */
+    .is-dimmed {
+      opacity: 0.22 !important;
+      filter: grayscale(45%);
+    }
+
+    /* حالت برجسته برای گره فعال در شبیه‌ساز */
+    @keyframes pulseRing {
+      0% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0.45); }
+      70% { box-shadow: 0 0 0 12px rgba(13, 148, 136, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0); }
+    }
+    @keyframes pulseRingAmber {
+      0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.45); }
+      70% { box-shadow: 0 0 0 12px rgba(217, 119, 6, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
+    }
+    .sim-active-det {
+      border-color: #0d9488 !important;
+      background-color: #f0fdfa !important;
+      animation: pulseRing 1.5s infinite;
+      transform: scale(1.03);
+      z-index: 20;
+    }
+    .sim-active-prob {
+      border-color: #d97706 !important;
+      background-color: #fffbeb !important;
+      animation: pulseRingAmber 1.5s infinite;
+      transform: scale(1.03);
+      z-index: 20;
+    }
+
+    /* انیمیشن حرکت خط جریان داده */
+    @keyframes dashFlow {
+      to {
+        stroke-dashoffset: -28;
+      }
+    }
+    .flow-animated {
+      stroke-dasharray: 8 6;
+      animation: dashFlow 0.8s linear infinite;
+    }
+
+    /* هایلایت ADR هنگام پرش از پنل جزئیات */
+    @keyframes adrFlash {
+      0% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0.5); border-color: #0d9488; background-color: #f0fdfa; }
+      70% { box-shadow: 0 0 0 8px rgba(13, 148, 136, 0); border-color: #0d9488; background-color: #f0fdfa; }
+      100% { box-shadow: none; }
+    }
+    .adr-highlight {
+      animation: adrFlash 1.8s ease-out;
+    }
+
+    /* پنل کشویی سمت چپ */
+    .drawer-panel {
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .drawer-closed {
+      transform: translateX(-105%);
+    }
+    .drawer-open {
+      transform: translateX(0);
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 font-sans min-h-screen flex flex-col selection:bg-teal-100 selection:text-teal-900">
+
+  <!-- ==================== نوار بالای صفحه (Header) ==================== -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+
+      <!-- سمت راست: عنوان و نوار مسیر (Breadcrumb) -->
+      <div class="flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-600 to-teal-700 text-white flex items-center justify-center shadow-sm shrink-0">
+          <!-- آیکون معماری C4 -->
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+            <rect x="8.5" y="14" width="7" height="7" rx="1.5"></rect>
+            <path d="M6.5 10v1.5a1.5 1.5 0 0 0 1.5 1.5h8a1.5 1.5 0 0 0 1.5-1.5V10M12 13v1"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">دستیار پشتیبانی فروشگاه</h1>
+            <span class="hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+              معماری AI-Native · نمایش تعاملی C4
+            </span>
+          </div>
+          <!-- Breadcrumb -->
+          <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5" dir="ltr">
+            <button onclick="switchToLevel('L2')" id="bc-l2" class="hover:text-teal-700 font-semibold text-teal-700 transition-colors">
+              L2 - Containers
+            </button>
+            <span id="bc-sep" class="hidden text-slate-300">/</span>
+            <button onclick="switchToLevel('L3')" id="bc-l3" class="hidden hover:text-teal-700 font-semibold text-teal-700 transition-colors">
+              L3 - Components
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      <!-- سمت چپ: دکمه‌های ناوبری و ابزارها -->
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- دکمه بازگشت به L2 (فقط در سطح L3 نمایش داده می‌شود) -->
+        <button id="btn-back-l2" onclick="switchToLevel('L2')" class="hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+          </svg>
+          بازگشت به L2
+        </button>
+
+        <!-- تب‌های اصلی -->
+        <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <button id="tab-arch" onclick="switchMainTab('arch')" class="px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-teal-700 shadow-sm">
+            معماری (C4)
+          </button>
+          <button id="tab-demo" onclick="switchMainTab('demo')" class="px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:text-slate-900">
+            شبیه‌ساز زنده (Demo)
+          </button>
+        </div>
+
+        <!-- دکمه تصمیم‌های معماری (ADR) -->
+        <button onclick="openAdrModal()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-sm transition-all">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          <span>تصمیم‌های معماری (ADR)</span>
+          <span class="px-1.5 py-0.5 text-[11px] rounded-md bg-white/15 font-mono">4</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ==================== محتوای اصلی ==================== -->
+  <main class="flex-1 flex flex-col">
+
+    <!-- ==================== بخش ۱: نمای معماری (C4) ==================== -->
+    <section id="view-arch" class="flex-1 flex flex-col">
+
+      <!-- نوار فیلتر و راهنمای رنگ (Legend & Filter Bar) -->
+      <div class="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5">
+        <div class="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-semibold text-slate-500 ml-1">فیلتر نمایش:</span>
+
+            <button onclick="setFilter('all')" data-filter="all" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-bold border transition-all bg-slate-900 text-white border-slate-900">
+              همه
+            </button>
+
+            <button onclick="setFilter('deterministic')" data-filter="deterministic" class="filter-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all bg-white text-slate-700 border-slate-200 hover:border-teal-500">
+              <span class="w-2.5 h-2.5 rounded-full bg-teal-600"></span>
+              قطعی (Deterministic)
+            </button>
+
+            <button onclick="setFilter('probabilistic')" data-filter="probabilistic" class="filter-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all bg-white text-slate-700 border-slate-200 hover:border-amber-500">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-200"></span>
+              احتمالاتی (Probabilistic)
+            </button>
+
+            <button onclick="setFilter('trust')" data-filter="trust" class="filter-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all bg-white text-slate-700 border-slate-200 hover:border-rose-500">
+              <span class="w-4 h-0 border-t-2 border-dashed border-rose-600"></span>
+              مرز اعتماد (Trust Boundary)
+            </button>
+          </div>
+
+          <div id="level-badge" class="text-xs font-mono text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200" dir="ltr">
+            C4 · L2 Container Diagram
+          </div>
+        </div>
+      </div>
+
+      <!-- بوم نمودار C4 -->
+      <div class="flex-1 c4-canvas-bg p-4 sm:p-6 lg:p-8 flex flex-col items-center justify-center overflow-x-hidden">
+
+        <!-- ========== نمای سطح ۲ (L2 - Container Diagram) ========== -->
+        <div id="canvas-l2" class="w-full max-w-[1140px] relative">
+          <!-- لایه SVG برای فلش‌های دقیق بین گره‌ها -->
+          <svg id="svg-l2" class="hidden md:block absolute inset-0 w-full h-full pointer-events-none z-10 overflow-visible"></svg>
+
+          <!-- شبکهٔ ۳ ستونه: بازیگران (راست) | مرز سامانه (وسط) | سامانه‌های بیرونی (چپ) -->
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10 items-center relative z-20 py-4">
+
+            <!-- ستون راست: بازیگران (Actors) -->
+            <div class="md:col-span-3 flex flex-col gap-12">
+              <!-- بازیگر: مشتری -->
+              <div id="l2-customer" onclick="openDrawer('customer')" data-type="actor"
+                class="c4-node cursor-pointer bg-white rounded-2xl border-2 border-slate-300 p-4 shadow-sm hover:border-slate-500">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-600">PERSON</span>
+                  <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
+                </div>
+                <h3 class="text-base font-extrabold text-slate-900">مشتری</h3>
+                <p class="text-xs text-slate-500 mt-1 leading-relaxed">کاربر فروشگاه · پیگیری سفارش ۱۰۴۲ و ثبت درخواست بازپرداخت</p>
+              </div>
+
+              <!-- بازیگر: اپراتور پشتیبانی -->
+              <div id="l2-operator" onclick="openDrawer('operator')" data-type="actor"
+                class="c4-node cursor-pointer bg-white rounded-2xl border-2 border-slate-300 p-4 shadow-sm hover:border-slate-500">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-600">PERSON · HITL</span>
+                  <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                  </svg>
+                </div>
+                <h3 class="text-base font-extrabold text-slate-900">اپراتور پشتیبانی</h3>
+                <p class="text-xs text-slate-500 mt-1 leading-relaxed">بررسی صف بازپرداخت و تأیید نهایی عملیات مالی (Human-in-the-Loop)</p>
+              </div>
+            </div>
+
+            <!-- ستون وسط: مرز سامانه (System Boundary) -->
+            <div class="md:col-span-5">
+              <div class="rounded-3xl border-2 border-dashed border-slate-400/80 bg-white/60 p-5 sm:p-6 relative">
+                <div class="flex items-center justify-between mb-5">
+                  <span class="text-xs font-bold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-xs">
+                    مرز سامانه فروشگاه
+                  </span>
+                  <span class="text-[11px] font-mono text-slate-400" dir="ltr">System Boundary</span>
+                </div>
+
+                <div class="flex flex-col gap-10">
+                  <!-- کانتینر ۱: رابط چت -->
+                  <div id="l2-chat" onclick="openDrawer('chat_ui')" data-type="deterministic"
+                    class="c4-node cursor-pointer bg-white rounded-2xl border-2 border-teal-600/80 p-4 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-200">قطعی · Web App</span>
+                      <span class="text-[11px] font-mono text-slate-400">Container</span>
+                    </div>
+                    <h3 class="text-base font-extrabold text-slate-900">رابط چت</h3>
+                    <p class="text-xs text-slate-600 mt-1 leading-relaxed">رابط گفت‌وگوی وب برای ارسال پیام مشتری و نمایش پاسخ ساختاریافته دستیار</p>
+                  </div>
+
+                  <!-- کانتینر ۲: سرویس دستیار (قابل ورود به L3) -->
+                  <div id="l2-assistant" data-type="deterministic" data-trust="true"
+                    class="c4-node bg-gradient-to-b from-teal-50/90 to-white rounded-2xl border-2 border-teal-600 p-4 shadow-md relative group">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-600 text-white">قطعی · Python Backend</span>
+                      <button onclick="openDrawer('assistant_service')" title="جزئیات سرویس دستیار"
+                        class="text-xs font-semibold text-teal-700 hover:text-teal-900 bg-white hover:bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200 transition-colors">
+                        جزئیات
+                      </button>
+                    </div>
+
+                    <div onclick="switchToLevel('L3')" class="cursor-pointer">
+                      <h3 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                        سرویس دستیار
+                        <span class="text-[11px] font-mono font-normal text-teal-700">(Agent Loop)</span>
+                      </h3>
+                      <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                        مدیریت حلقهٔ عامل، کنترل دسترسی، اعتبارسنجی Schema ابزار و اجرای قطعی درخواست‌ها
+                      </p>
+
+                      <!-- دکمه واضح ورود به L3 -->
+                      <div class="mt-3.5 pt-3 border-t border-teal-200/80 flex items-center justify-between">
+                        <span class="text-xs font-bold text-teal-700 group-hover:text-teal-900 flex items-center gap-1.5">
+                          <svg class="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
+                          </svg>
+                          برای مشاهدهٔ سطح ۳ (L3 Components) کلیک کنید
+                        </span>
+                        <span class="text-[11px] font-mono bg-teal-600 text-white px-2 py-0.5 rounded-md">L3 ↵</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ستون چپ: سامانه‌های بیرونی (External Systems) -->
+            <div class="md:col-span-4 flex flex-col gap-12">
+              <!-- سامانه بیرونی: API مدل زبانی -->
+              <div id="l2-llm" onclick="openDrawer('llm_api')" data-type="probabilistic" data-trust="true"
+                class="c4-node cursor-pointer bg-amber-50/70 rounded-2xl border-2 border-dashed border-amber-500 p-4 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-300">احتمالاتی · External API</span>
+                  <span class="text-[11px] font-mono text-amber-700">LLM Gateway</span>
+                </div>
+                <h3 class="text-base font-extrabold text-slate-900">API مدل زبانی</h3>
+                <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                  مدل بیرونی از طریق Gateway · گام بعدی و نام ابزار را پیشنهاد می‌دهد (بدون دسترسی مستقیم به دیتابیس)
+                </p>
+                <div class="mt-2.5 flex items-center gap-1.5">
+                  <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-amber-200 text-amber-800">ADR-2</span>
+                </div>
+              </div>
+
+              <!-- سامانه بیرونی: سامانه سفارش‌ها -->
+              <div id="l2-orders" onclick="openDrawer('order_system')" data-type="deterministic"
+                class="c4-node cursor-pointer bg-white rounded-2xl border-2 border-teal-600/70 p-4 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-200">قطعی · SQLite DB</span>
+                  <span class="text-[11px] font-mono text-slate-400">External System</span>
+                </div>
+                <h3 class="text-base font-extrabold text-slate-900">سامانه سفارش‌ها</h3>
+                <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                  نگهداری وضعیت سفارش‌ها (مثل سفارش ۱۰۴۲) و صف بررسی درخواست‌های بازپرداخت
+                </p>
+                <div class="mt-2.5 flex items-center gap-1.5">
+                  <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">ADR-4</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- راهنمای پایین نمودار L2 -->
+          <div class="mt-6 text-center text-xs text-slate-500">
+            روی کارت <strong class="text-teal-700">سرویس دستیار</strong> کلیک کنید تا وارد نمودار مؤلفه‌ها (<span class="font-mono">L3</span>) شوید؛ یا روی سایر کارت‌ها برای مشاهدهٔ جزئیات کلیک کنید.
+          </div>
+        </div>
+
+        <!-- ========== نمای سطح ۳ (L3 - Component Diagram: داخل سرویس دستیار) ========== -->
+        <div id="canvas-l3" class="hidden w-full max-w-[1160px] relative">
+          <!-- کادر مرز سرویس دستیار -->
+          <div class="rounded-3xl border-2 border-dashed border-slate-400/90 bg-white/75 p-5 sm:p-7 relative shadow-sm">
+
+            <!-- سرصفحه مرز L3 -->
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+              <div class="flex items-center gap-2.5">
+                <span class="px-2.5 py-1 rounded-lg bg-teal-600 text-white text-xs font-bold">L3 · Components</span>
+                <h2 class="text-base sm:text-lg font-extrabold text-slate-900">داخل سرویس دستیار — حلقهٔ عامل (Agent Loop)</h2>
+              </div>
+              <span class="text-xs font-mono text-slate-400" dir="ltr">Assistant Service Boundary</span>
+            </div>
+
+            <!-- کانتینر موقعیت‌یابی SVG و کارت‌های L3 -->
+            <div id="l3-stage" class="relative">
+              <!-- لایه SVG برای فلش‌های L3 -->
+              <svg id="svg-l3" class="hidden md:block absolute inset-0 w-full h-full pointer-events-none z-10 overflow-visible"></svg>
+
+              <div class="relative z-20 flex flex-col gap-6">
+
+                <!-- ردیف ۱: ناحیه احتمالاتی (Probabilistic Zone) -->
+                <div id="l3-prob-zone" data-type="probabilistic"
+                  class="rounded-2xl border-2 border-dashed border-amber-400/80 bg-amber-50/40 p-4 sm:p-5">
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="text-[11px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                      ناحیه احتمالاتی (Probabilistic · بدون دسترسی مستقیم به داده)
+                    </span>
+                    <span class="text-[11px] font-mono text-amber-700 hidden sm:inline">Reasoning & Proposal</span>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-16">
+                    <!-- مؤلفه ۲: برنامه‌ریز -->
+                    <div id="l3-planner" onclick="openDrawer('planner')" data-type="probabilistic"
+                      class="c4-node cursor-pointer bg-white rounded-xl border-2 border-dashed border-amber-500 p-4 shadow-xs">
+                      <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">احتمالاتی</span>
+                        <span class="text-[11px] font-mono text-slate-400">Planner</span>
+                      </div>
+                      <h3 class="text-base font-extrabold text-slate-900">برنامه‌ریز</h3>
+                      <p class="text-xs text-slate-600 mt-1">تعیین مراحل رسیدگی به درخواست و ساخت Prompt همراه با تاریخچه و قوانین</p>
+                    </div>
+
+                    <!-- مؤلفه ۳: مدل پایه -->
+                    <div id="l3-model" onclick="openDrawer('foundation_model')" data-type="probabilistic" data-trust="true"
+                      class="c4-node cursor-pointer bg-white rounded-xl border-2 border-dashed border-amber-500 p-4 shadow-xs">
+                      <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">احتمالاتی</span>
+                        <span class="text-[11px] font-mono text-slate-400">Foundation Model / Gateway</span>
+                      </div>
+                      <h3 class="text-base font-extrabold text-slate-900">مدل پایه</h3>
+                      <p class="text-xs text-slate-600 mt-1">پیشنهاد گام بعدی و تولید خروجی ساخت‌یافته JSON (مثل <span class="font-mono text-[11px] bg-slate-100 px-1 rounded">get_order_status</span>)</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ========== خط مرز اعتماد (Trust Boundary) ========== -->
+                <div id="l3-trust-line" data-type="trust" data-trust="true"
+                  class="relative py-2 flex items-center justify-center transition-all">
+                  <div class="w-full border-t-[3px] border-dashed border-rose-500"></div>
+                  <div class="absolute bg-rose-50 border-2 border-rose-500 text-rose-800 px-4 py-1.5 rounded-full shadow-sm flex flex-wrap items-center justify-center gap-2 text-xs font-extrabold">
+                    <svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                    <span>مرز اعتماد (Schema ابزار)</span>
+                    <span class="text-rose-400">|</span>
+                    <span class="text-slate-900">«مدل پیشنهاد می‌دهد، کد اجرا می‌کند»</span>
+                  </div>
+                </div>
+
+                <!-- ردیف ۲: هسته قطعی (هماهنگ‌کننده + کنترل‌گر) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-16 pt-2">
+                  <!-- مؤلفه ۱: هماهنگ‌کننده -->
+                  <div id="l3-orchestrator" onclick="openDrawer('orchestrator')" data-type="deterministic"
+                    class="c4-node cursor-pointer bg-white rounded-xl border-2 border-teal-600 p-4 shadow-xs">
+                    <div class="flex items-center justify-between mb-1.5">
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200">قطعی · Core</span>
+                      <span class="text-[11px] font-mono text-slate-400">Orchestrator</span>
+                    </div>
+                    <h3 class="text-base font-extrabold text-slate-900">هماهنگ‌کننده</h3>
+                    <p class="text-xs text-slate-600 mt-1">مدیریت ترتیب مراحل حلقهٔ عامل، ارتباط با رابط چت و ترکیب پاسخ نهایی</p>
+                  </div>
+
+                  <!-- مؤلفه ۴: کنترل‌گر (روی مرز اعتماد) -->
+                  <div id="l3-controller" onclick="openDrawer('controller')" data-type="deterministic" data-trust="true"
+                    class="c4-node cursor-pointer bg-white rounded-xl border-2 border-teal-600 ring-2 ring-rose-200 p-4 shadow-xs relative">
+                    <div class="flex items-center justify-between mb-1.5">
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200">قطعی</span>
+                        <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">validate / gate</span>
+                      </div>
+                      <span class="text-[11px] font-mono text-slate-400">Controller</span>
+                    </div>
+                    <h3 class="text-base font-extrabold text-slate-900">کنترل‌گر و کنترل دسترسی</h3>
+                    <p class="text-xs text-slate-600 mt-1">اعتبارسنجی JSON Schema، سقف گام‌ها، بررسی مجوز ابزار و تزریق <span class="font-mono text-[11px]">customer_id</span></p>
+                  </div>
+                </div>
+
+                <!-- ردیف ۳: حافظه، موتور اجرا، پایگاه دانش -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 pt-4">
+                  <!-- مؤلفه ۶: حافظه نشست -->
+                  <div id="l3-memory" onclick="openDrawer('session_memory')" data-type="deterministic"
+                    class="c4-node cursor-pointer bg-white rounded-xl border-2 border-teal-600/80 p-4 shadow-xs">
+                    <div class="flex items-center justify-between mb-1.5">
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200">قطعی · State</span>
+                      <span class="text-[11px] font-mono text-slate-400">Session Memory</span>
+                    </div>
+                    <h3 class="text-base font-extrabold text-slate-900">حافظهٔ نشست</h3>
+                    <p class="text-xs text-slate-600 mt-1">نگهداری شماره سفارش، تاریخچه پیام‌ها و شناسهٔ ایزوله مشتری (<span class="font-mono text-[11px]">C001</span>)</p>
+                  </div>
+
+                  <!-- مؤلفه ۵: موتور اجرا -->
+                  <div id="l3-engine" onclick="openDrawer('execution_engine')" data-type="deterministic" data-trust="true"
+                    class="c4-node cursor-pointer bg-white rounded-xl border-2 border-teal-600 p-4 shadow-xs">
+                    <div class="flex items-center justify-between mb-1.5">
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200">قطعی · Least Privilege</span>
+                      <span class="text-[11px] font-mono text-slate-400">Execution Engine</span>
+                    </div>
+                    <h3 class="text-base font-extrabold text-slate-900">موتور اجرا</h3>
+                    <p class="text-xs text-slate-600 mt-1">اجرای قطعی ابزارهای مجاز پس از تأیید کنترل‌گر (کوئری SQLite و ثبت صف بررسی)</p>
+                  </div>
+
+                  <!-- مؤلفه ۷: پایگاه دانش -->
+                  <div id="l3-kb" onclick="openDrawer('knowledge_base')" data-type="deterministic"
+                    class="c4-node cursor-pointer bg-white rounded-xl border-2 border-teal-600/80 p-4 shadow-xs">
+                    <div class="flex items-center justify-between mb-1.5">
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200">قطعی · RAG</span>
+                      <span class="text-[11px] font-mono text-slate-400">Knowledge Base</span>
+                    </div>
+                    <h3 class="text-base font-extrabold text-slate-900">پایگاه دانش (RAG)</h3>
+                    <p class="text-xs text-slate-600 mt-1">بازیابی مقررات فروشگاه، قوانین مرجوعی و ارسال با جست‌وجوی ترکیبی (BM25 + Embedding)</p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- راهنمای پایین نمودار L3 -->
+          <div class="mt-5 text-center text-xs text-slate-500">
+            روی هر مؤلفه کلیک کنید تا جزئیات، قرارداد و ADRهای مرتبط را ببینید.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== بخش ۲: شبیه‌ساز زنده (Live Demo) ==================== -->
+    <section id="view-demo" class="hidden flex-1 c4-canvas-bg p-4 sm:p-6">
+      <div class="max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- ستون راست (در RTL): نمودار فشردهٔ حلقهٔ عامل با انیمیشن زنده -->
+        <div class="lg:col-span-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base font-extrabold text-slate-900">مسیر اجرای زنده روی حلقهٔ عامل (L3)</h2>
+              <p class="text-xs text-slate-500 mt-0.5">در هر گام، مؤلفهٔ فعال و عبور از مرز اعتماد روشن می‌شود</p>
+            </div>
+            <span id="sim-step-badge" class="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200">
+              آماده به اجرا
+            </span>
+          </div>
+
+          <!-- نمودار فشرده حلقه عامل -->
+          <div class="c4-canvas-bg rounded-xl border border-slate-200 p-4 relative">
+            <!-- ناحیه احتمالاتی -->
+            <div class="rounded-xl border border-dashed border-amber-400 bg-amber-50/40 p-3 mb-3">
+              <div class="text-[10px] font-bold text-amber-800 mb-2">ناحیه احتمالاتی (مدل)</div>
+              <div class="grid grid-cols-2 gap-3">
+                <div id="sim-node-planner" class="sim-node transition-all bg-white rounded-lg border-2 border-dashed border-amber-400 p-2.5 text-center">
+                  <div class="text-xs font-extrabold text-slate-800">برنامه‌ریز</div>
+                  <div class="text-[10px] font-mono text-slate-400">Planner</div>
+                </div>
+                <div id="sim-node-model" class="sim-node transition-all bg-white rounded-lg border-2 border-dashed border-amber-400 p-2.5 text-center">
+                  <div class="text-xs font-extrabold text-slate-800">مدل پایه (LLM)</div>
+                  <div class="text-[10px] font-mono text-slate-400">JSON Proposal</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- مرز اعتماد -->
+            <div id="sim-trust-boundary" class="relative my-3 flex items-center justify-center transition-all">
+              <div class="w-full border-t-2 border-dashed border-rose-500"></div>
+              <span class="absolute bg-rose-50 text-rose-700 border border-rose-400 px-3 py-0.5 rounded-full text-[10px] font-extrabold">
+                مرز اعتماد · مدل پیشنهاد می‌دهد، کد اجرا می‌کند
+              </span>
+            </div>
+
+            <!-- ناحیه قطعی -->
+            <div class="rounded-xl border border-teal-200 bg-teal-50/30 p-3 mt-3 space-y-3">
+              <div class="text-[10px] font-bold text-teal-800">ناحیه قطعی (کد و داده)</div>
+              <div class="grid grid-cols-2 gap-3">
+                <div id="sim-node-orchestrator" class="sim-node transition-all bg-white rounded-lg border-2 border-teal-500/70 p-2.5 text-center">
+                  <div class="text-xs font-extrabold text-slate-800">هماهنگ‌کننده</div>
+                  <div class="text-[10px] font-mono text-slate-400">Orchestrator</div>
+                </div>
+                <div id="sim-node-controller" class="sim-node transition-all bg-white rounded-lg border-2 border-teal-500/70 p-2.5 text-center">
+                  <div class="text-xs font-extrabold text-slate-800">کنترل‌گر</div>
+                  <div class="text-[10px] font-mono text-rose-600 font-bold">validate / gate</div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2.5">
+                <div id="sim-node-memory" class="sim-node transition-all bg-white rounded-lg border-2 border-teal-500/60 p-2 text-center">
+                  <div class="text-[11px] font-bold text-slate-800">حافظه نشست</div>
+                  <div class="text-[10px] font-mono text-slate-400">Scope: C001</div>
+                </div>
+                <div id="sim-node-engine" class="sim-node transition-all bg-white rounded-lg border-2 border-teal-500/70 p-2 text-center">
+                  <div class="text-[11px] font-bold text-slate-800">موتور اجرا</div>
+                  <div class="text-[10px] font-mono text-slate-400">Execution</div>
+                </div>
+                <div id="sim-node-db" class="sim-node transition-all bg-white rounded-lg border-2 border-slate-400 p-2 text-center">
+                  <div class="text-[11px] font-bold text-slate-800">SQLite DB</div>
+                  <div class="text-[10px] font-mono text-slate-400">Orders & Queue</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- کارت توضیح گام فعلی -->
+          <div id="sim-explanation" class="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-4">
+            <div class="flex items-center gap-2 text-xs font-bold text-teal-700 mb-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span id="sim-exp-title">راهنمای شبیه‌ساز</span>
+            </div>
+            <p id="sim-exp-body" class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+              یکی از ۳ سناریوی عملی را انتخاب کنید و با دکمهٔ «گام بعدی» یا «اجرای خودکار»، جریان دقیق درخواست روی معماری AI-Native را در کلاس نمایش دهید.
+            </p>
+          </div>
+
+          <!-- کارت‌های وضعیت زنده پایگاه داده SQLite (مطابق اسلاید ۱۲) -->
+          <div class="mt-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-700">وضعیت زندهٔ پایگاه داده (SQLite — Order #1042)</span>
+              <span class="text-[11px] font-mono text-slate-400" dir="ltr">customer_id = 'C001'</span>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <div class="rounded-xl bg-slate-50 border border-slate-200 p-3 text-center">
+                <div class="text-[11px] text-slate-500">وضعیت سفارش</div>
+                <div id="db-status" class="text-base font-mono font-extrabold text-teal-700 mt-1">shipped</div>
+              </div>
+              <div id="db-reviews-card" class="rounded-xl bg-slate-50 border border-slate-200 p-3 text-center transition-all">
+                <div class="text-[11px] text-slate-500">در انتظار بررسی</div>
+                <div id="db-reviews" class="text-base font-mono font-extrabold text-slate-800 mt-1">0</div>
+              </div>
+              <div class="rounded-xl bg-slate-50 border border-slate-200 p-3 text-center">
+                <div class="text-[11px] text-slate-500">مبلغ بازپرداخت‌شده</div>
+                <div id="db-refunded" class="text-base font-mono font-extrabold text-emerald-700 mt-1" dir="ltr">$0.00</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- متریک‌های ارزیابی دستیار (اسلاید ۵: Latency, Cost, Correctness) -->
+          <div class="mt-3 grid grid-cols-3 gap-3 pt-3 border-t border-slate-100">
+            <div class="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg border border-slate-200/70">
+              <span class="text-[11px] text-slate-500">Latency</span>
+              <span id="metric-latency" class="text-xs font-mono font-bold text-slate-700" dir="ltr">0 ms</span>
+            </div>
+            <div class="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg border border-slate-200/70">
+              <span class="text-[11px] text-slate-500">Cost</span>
+              <span id="metric-cost" class="text-xs font-mono font-bold text-slate-700" dir="ltr">$0.0000</span>
+            </div>
+            <div class="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg border border-slate-200/70">
+              <span class="text-[11px] text-slate-500">درستی پاسخ</span>
+              <span id="metric-correctness" class="text-xs font-bold text-slate-400">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ستون چپ (در RTL): انتخاب سناریو، کنترل‌ها و ترمینال JSON/SQL -->
+        <div class="lg:col-span-6 flex flex-col gap-4">
+
+          <!-- پنل انتخاب سناریو -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <h3 class="text-sm font-extrabold text-slate-900 mb-3">انتخاب سناریوی عملی (مثال سفارش ۱۰۴۲)</h3>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
+              <button onclick="selectScenario(0)" id="sc-btn-0" class="sc-btn text-right p-3 rounded-xl border-2 border-teal-600 bg-teal-50/60 transition-all">
+                <div class="text-[11px] font-bold text-teal-700">سناریو ۱</div>
+                <div class="text-xs font-extrabold text-slate-900 mt-0.5">پیگیری سفارش ۱۰۴۲</div>
+                <div class="text-[11px] text-slate-500 mt-1 truncate">«سفارش ۱۰۴۲ کجاست؟»</div>
+              </button>
+
+              <button onclick="selectScenario(1)" id="sc-btn-1" class="sc-btn text-right p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 transition-all">
+                <div class="text-[11px] font-bold text-amber-700">سناریو ۲</div>
+                <div class="text-xs font-extrabold text-slate-900 mt-0.5">جلوگیری از توهم</div>
+                <div class="text-[11px] text-slate-500 mt-1 truncate">«سفارش ۱۰۴۲ فردا می‌رسد؟»</div>
+              </button>
+
+              <button onclick="selectScenario(2)" id="sc-btn-2" class="sc-btn text-right p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 transition-all">
+                <div class="text-[11px] font-bold text-rose-700">سناریو ۳</div>
+                <div class="text-xs font-extrabold text-slate-900 mt-0.5">بازپرداخت و مرز اعتماد</div>
+                <div class="text-[11px] text-slate-500 mt-1 truncate">«پول سفارش ۱۰۴۲ رو پس بگیرم»</div>
+              </button>
+            </div>
+
+            <!-- حباب پیام مشتری -->
+            <div class="rounded-xl bg-slate-100 border border-slate-200 px-4 py-3 mb-4 flex items-center justify-between gap-3">
+              <div>
+                <span class="text-[11px] font-bold text-slate-500 block">پیام ورودی مشتری (Session: C001):</span>
+                <span id="sim-user-msg" class="text-sm font-extrabold text-slate-900">«سفارش ۱۰۴۲ کجاست؟»</span>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-white text-[11px] font-mono text-slate-600 border border-slate-200 shrink-0" dir="ltr" id="sim-cli-cmd">
+                python demo.py status
+              </span>
+            </div>
+
+            <!-- دکمه‌های کنترل اجرا -->
+            <div class="flex flex-wrap items-center gap-2.5">
+              <button onclick="nextSimStep()" id="btn-next-step" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold shadow-sm transition-all">
+                <span>گام بعدی</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path>
+                </svg>
+              </button>
+
+              <button onclick="toggleAutoPlay()" id="btn-auto-play" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold shadow-sm transition-all">
+                <svg id="icon-play" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+                <span id="text-auto-play">اجرای خودکار</span>
+              </button>
+
+              <button onclick="resetSimulation()" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs sm:text-sm font-semibold transition-all mr-auto">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                بازنشانی دیتابیس (Reset)
+              </button>
+            </div>
+          </div>
+
+          <!-- ترمینال زنده و لاگ JSON / SQL -->
+          <div class="bg-slate-900 rounded-2xl border border-slate-800 shadow-md overflow-hidden flex flex-col">
+            <div class="bg-slate-800/90 px-4 py-2.5 flex items-center justify-between border-b border-slate-700">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <span class="text-xs font-mono text-slate-300 mr-2" dir="ltr">demo.py — Agent Execution Trace</span>
+              </div>
+              <span class="text-[11px] font-mono text-slate-400" dir="ltr">SQLite + JSON Schema</span>
+            </div>
+
+            <div id="sim-terminal" class="p-4 font-mono text-xs leading-relaxed text-slate-200 min-h-[280px] max-h-[380px] overflow-y-auto space-y-3" dir="ltr">
+              <div class="text-slate-400">&gt; python demo.py reset</div>
+              <div class="text-emerald-400">Order 1042: shipped &nbsp;/&nbsp; Open reviews: 0 &nbsp;/&nbsp; Refunded: $0.00</div>
+              <div class="text-slate-500">// برای شروع، دکمه «گام بعدی» یا «اجرای خودکار» را بزنید...</div>
+            </div>
+          </div>
+
+          <!-- جعبه پاسخ نهایی به مشتری -->
+          <div id="sim-final-box" class="hidden rounded-2xl border-2 border-teal-500 bg-teal-50/70 p-4 shadow-sm">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-extrabold text-teal-800">پاسخ نهایی دستیار به مشتری:</span>
+              <span id="sim-safety-tag" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-600 text-white">تأییدشده بر اساس داده</span>
+            </div>
+            <p id="sim-final-reply" class="text-sm font-bold text-slate-900 leading-relaxed"></p>
+            <p id="sim-final-note" class="text-xs text-slate-600 mt-1.5 leading-relaxed"></p>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== پنل کشویی جزئیات مؤلفه (Slide-over Drawer سمت چپ) ==================== -->
+  <div id="drawer-backdrop" onclick="closeDrawer()" class="hidden fixed inset-0 bg-slate-900/30 backdrop-blur-[1px] z-40 transition-opacity"></div>
+
+  <aside id="detail-drawer" class="drawer-panel drawer-closed fixed top-0 left-0 bottom-0 w-full max-w-[440px] bg-white z-50 shadow-2xl border-r border-slate-200 flex flex-col">
+    <!-- سرصفحه پنل -->
+    <div class="px-5 py-4 border-b border-slate-200 flex items-start justify-between gap-3 bg-slate-50/80">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span id="dr-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-md"></span>
+          <span id="dr-eng" class="text-xs font-mono text-slate-400" dir="ltr"></span>
+        </div>
+        <h2 id="dr-title" class="text-lg font-extrabold text-slate-900"></h2>
+      </div>
+      <button onclick="closeDrawer()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors" aria-label="بستن">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- بدنه اسکرول‌دار پنل -->
+    <div id="dr-content" class="flex-1 overflow-y-auto p-5 space-y-5 text-sm">
+      <!-- محتوا به‌صورت پویا توسط JS پر می‌شود -->
+    </div>
+  </aside>
+
+  <!-- ==================== پنجرهٔ تصمیم‌های معماری (ADR Modal) ==================== -->
+  <div id="adr-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden">
+      <!-- سرصفحه Modal -->
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <span class="text-[11px] font-mono text-slate-400 uppercase tracking-wider" dir="ltr">Architecture Decision Records</span>
+          <h2 class="text-lg font-extrabold text-slate-900">تصمیم‌های معماری (ADR)</h2>
+        </div>
+        <button onclick="closeAdrModal()" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors" aria-label="بستن">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- لیست ADRها -->
+      <div id="adr-list" class="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+        <!-- محتوا توسط JS ساخته می‌شود -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== اسکریپت منطق برنامه ==================== -->
+  <script>
+    /* =========================================================================
+       ۱. داده‌های کامل مؤلفه‌ها (L2 و L3) بر اساس اسلایدهای معماری AI-Native
+       ========================================================================= */
+    const COMPONENTS = {
+      // --- L2 ---
+      customer: {
+        id: 'customer',
+        level: 'L2',
+        title: 'مشتری',
+        eng: 'Customer (Actor)',
+        type: 'actor',
+        badgeText: 'بازیگر · کاربر نهایی',
+        badgeClass: 'bg-slate-100 text-slate-700 border border-slate-300',
+        role: 'کاربر فروشگاه آنلاین که از طریق رابط گفت‌وگو وضعیت سفارش خود را پیگیری می‌کند یا درخواست بازپرداخت ثبت می‌کند.',
+        inProject: 'در سناریوهای عملی، مشتری با شناسهٔ نشست C001 پیام‌هایی مانند «سفارش ۱۰۴۲ کجاست؟»، «سفارش ۱۰۴۲ فردا می‌رسد؟» و «می‌خوام پول سفارش ۱۰۴۲ رو پس بگیرم» را ارسال می‌کند.',
+        contract: `// نمونه پیام ورودی مشتری\n{\n  "session_id": "sess_8812",\n  "customer_id": "C001",\n  "message": "سفارش ۱۰۴۲ کجاست؟"\n}`,
+        dependencies: ['chat_ui'],
+        adrs: ['ADR-4']
+      },
+      operator: {
+        id: 'operator',
+        level: 'L2',
+        title: 'اپراتور پشتیبانی',
+        eng: 'Support Operator (HITL)',
+        type: 'actor',
+        badgeText: 'بازیگر · تأیید انسان',
+        badgeClass: 'bg-slate-100 text-slate-700 border border-slate-300',
+        role: 'کارشناس انسانی که صف درخواست‌های حساس و برگشت‌ناپذیر (مانند بازپرداخت وجه) را بررسی و تأیید یا رد می‌کند.',
+        inProject: 'دستیار هوش مصنوعی مجاز به واریز وجه نیست؛ تنها درخواست را در صف بررسی ثبت می‌کند تا اپراتور پس از بررسی، بازپرداخت را انجام دهد (Human-in-the-Loop).',
+        contract: `// رکورد صف بررسی اپراتور در SQLite\n{\n  "review_id": 1,\n  "order_id": "1042",\n  "customer_id": "C001",\n  "status": "PENDING_HUMAN_APPROVAL",\n  "refunded_amount": 0.00\n}`,
+        dependencies: ['order_system'],
+        adrs: ['ADR-3']
+      },
+      chat_ui: {
+        id: 'chat_ui',
+        level: 'L2',
+        title: 'رابط چت',
+        eng: 'Chat Web App',
+        type: 'deterministic',
+        badgeText: 'قطعی · Container',
+        badgeClass: 'bg-teal-50 text-teal-700 border border-teal-200',
+        role: 'برنامهٔ وب برای دریافت پیام‌های متنی مشتری، ارسال به سرویس دستیار و نمایش پاسخ نهایی همراه با منبع یا وضعیت شفاف.',
+        inProject: 'پیام مشتری را همراه با توکن احراز هویت (که در سمت سرور به customer_id=C001 نگاشت می‌شود) به سرویس دستیار ارسال می‌کند.',
+        contract: `POST /api/v1/chat\nContent-Type: application/json\n\n{\n  "message": "سفارش ۱۰۴۲ کجاست؟"\n}`,
+        dependencies: ['assistant_service'],
+        adrs: ['ADR-4']
+      },
+      assistant_service: {
+        id: 'assistant_service',
+        level: 'L2',
+        title: 'سرویس دستیار',
+        eng: 'Assistant Service (Python Backend)',
+        type: 'deterministic',
+        badgeText: 'قطعی · Agent Service',
+        badgeClass: 'bg-teal-600 text-white',
+        role: 'هستهٔ اصلی معماری AI-Native که حلقهٔ عامل (Agent Loop) را مدیریت می‌کند و مرز اعتماد بین مدل احتمالاتی و کد قطعی را اعمال می‌کند.',
+        inProject: 'در نسخهٔ عملی (demo.py)، پیشنهاد ابزار JSON را دریافت، با Schema اعتبارسنجی و پس از اعمال محدودیت customer_id، کوئری SQLite را اجرا می‌کند.',
+        contract: `// حلقهٔ پردازش در سرویس دستیار\n1. Receive message + session scope (C001)\n2. Call LLM Gateway -> JSON tool proposal\n3. Validate Schema & Permissions (Controller)\n4. Execute SQLite Tool (Execution Engine)\n5. Return grounded answer`,
+        dependencies: ['llm_api', 'order_system'],
+        adrs: ['ADR-2', 'ADR-3', 'ADR-4'],
+        hasDrillDown: true
+      },
+      llm_api: {
+        id: 'llm_api',
+        level: 'L2',
+        title: 'API مدل زبانی (LLM Gateway)',
+        eng: 'External LLM API via Gateway',
+        type: 'probabilistic',
+        badgeText: 'احتمالاتی · External API',
+        badgeClass: 'bg-amber-100 text-amber-800 border border-amber-300',
+        role: 'ارائه‌دهندهٔ مدل زبانی بزرگ از طریق یک Gateway واحد برای مسیریابی، محدودیت نرخ، Cache و جایگزینی مدل بدون وابستگی مستقیم.',
+        inProject: 'تنها متن و ساختار پیشنهادی JSON تولید می‌کند و هیچ دسترسی مستقیمی به پایگاه داده سفارش‌ها ندارد.',
+        contract: `// خروجی پیشنهادی مدل از طریق Gateway\n{\n  "tool": "get_order_status",\n  "args": {\n    "order_id": "1042"\n  }\n}`,
+        dependencies: [],
+        adrs: ['ADR-2']
+      },
+      order_system: {
+        id: 'order_system',
+        level: 'L2',
+        title: 'سامانه سفارش‌ها (SQLite DB)',
+        eng: 'Order Management System',
+        type: 'deterministic',
+        badgeText: 'قطعی · Database',
+        badgeClass: 'bg-teal-50 text-teal-700 border border-teal-200',
+        role: 'منبع حقیقت قطعی (Source of Truth) برای نگهداری وضعیت سفارش‌ها، تاریخ تحویل و صف درخواست‌های بازپرداخت.',
+        inProject: 'در تمرین عملی، پایگاه دادهٔ SQLite رکورد سفارش ۱۰۴۲ را با status="shipped" و delivery_date=null نگهداری می‌کند و جدول صف بررسی بازپرداخت را مدیریت می‌کند.',
+        contract: `SELECT status, delivery_date\nFROM orders\nWHERE order_id = ? AND customer_id = ?;\n-- Result: ("shipped", NULL)`,
+        dependencies: [],
+        adrs: ['ADR-3', 'ADR-4']
+      },
+
+      // --- L3 ---
+      orchestrator: {
+        id: 'orchestrator',
+        level: 'L3',
+        title: 'هماهنگ‌کننده',
+        eng: 'Orchestrator',
+        type: 'deterministic',
+        badgeText: 'قطعی · Core Component',
+        badgeClass: 'bg-teal-50 text-teal-700 border border-teal-200',
+        role: 'جریان درخواست را می‌پذیرد و ترتیب اجرای مراحل حلقهٔ عامل (بازیابی حافظه، برنامه‌ریزی، اعتبارسنجی، اجرا و تولید پاسخ نهایی) را مدیریت می‌کند.',
+        inProject: 'حلقهٔ اصلی سرویس دستیار در backend است؛ درخواست HTTP را می‌گیرد، شناسه نشست C001 را از حافظه می‌خواند و در نهایت پاسخ مستند به داده را به رابط چت برمی‌گرداند.',
+        contract: `def handle_request(session_id, user_msg):\n  ctx = memory.load(session_id)\n  proposal = planner.next_step(user_msg, ctx)\n  action = controller.validate(proposal, ctx.customer_id)\n  result = engine.execute(action)\n  return format_grounded_reply(result)`,
+        dependencies: ['planner', 'controller', 'session_memory', 'execution_engine'],
+        adrs: ['ADR-3', 'ADR-4']
+      },
+      planner: {
+        id: 'planner',
+        level: 'L3',
+        title: 'برنامه‌ریز',
+        eng: 'Planner',
+        type: 'probabilistic',
+        badgeText: 'احتمالاتی · Reasoning',
+        badgeClass: 'bg-amber-100 text-amber-800 border border-amber-300',
+        role: 'مراحل رسیدگی به درخواست را تعیین می‌کند و Prompt نسخه‌دار را با ترکیب پیام مشتری، حافظهٔ نشست و قوانین بازیابی‌شده آماده می‌کند.',
+        inProject: 'برای سؤال «سفارش ۱۰۴۲ کجاست؟» تشخیص می‌دهد که ابتدا باید وضعیت سفارش از سامانه سفارش‌ها استعلام شود و نمی‌تواند از پیش پاسخ دهد.',
+        contract: `// قرارداد Prompt نسخه‌دار (v2)\n{\n  "prompt_version": "support-v2.1",\n  "allowed_tools": ["get_order_status", "request_refund_review"],\n  "rule": "اگر تاریخ تحویل null است، هرگز زمان تحویل را حدس نزن."\n}`,
+        dependencies: ['foundation_model', 'knowledge_base'],
+        adrs: ['ADR-1', 'ADR-2']
+      },
+      foundation_model: {
+        id: 'foundation_model',
+        level: 'L3',
+        title: 'مدل پایه (Gateway)',
+        eng: 'Foundation Model / LLM Gateway',
+        type: 'probabilistic',
+        badgeText: 'احتمالاتی · Model Layer',
+        badgeClass: 'bg-amber-100 text-amber-800 border border-amber-300',
+        role: 'متن و پیشنهاد گام بعد را تولید می‌کند؛ هیچ دسترسی مستقیمی به پایگاه داده یا ابزارها ندارد و خروجی آن همیشه باید از مرز اعتماد عبور کند.',
+        inProject: 'در نسخهٔ آفلاین عملی، خروجی شبیه‌سازی‌شده با قالب JSON تولید می‌کند و در محیط واقعی از طریق LLM Gateway به API مدل بیرونی متصل می‌شود.',
+        contract: `// نمونه خروجی ساخت‌یافته مدل (JSON)\n{\n  "tool": "get_order_status",\n  "args": {\n    "order_id": "1042"\n  }\n}`,
+        dependencies: ['llm_api'],
+        adrs: ['ADR-2', 'ADR-3']
+      },
+      controller: {
+        id: 'controller',
+        level: 'L3',
+        title: 'کنترل‌گر و کنترل دسترسی',
+        eng: 'Controller & Access Control (Gate)',
+        type: 'deterministic',
+        badgeText: 'قطعی · مرز اعتماد (validate / gate)',
+        badgeClass: 'bg-rose-50 text-rose-700 border border-rose-300',
+        role: 'مرز اعتماد سیستم است. اعتبارسنجی JSON Schema، بررسی مجوز ابزار، کنترل سقف گام‌ها و جلوگیری از اجرای عملیات برگشت‌ناپذیر بدون تأیید انسان را انجام می‌دهد.',
+        inProject: 'نام ابزار و ورودی‌ها را بررسی می‌کند؛ اجازهٔ بازپرداخت مستقیم نمی‌دهد (فقط request_refund_review مجاز است) و شناسهٔ customer_id=C001 را به‌صورت قطعی از نشست تزریق می‌کند.',
+        contract: `// قواعد اعتبارسنجی کنترل‌گر\nALLOWED_TOOLS = {\n  "get_order_status": { "scope": "read-only" },\n  "request_refund_review": { "scope": "queue-only" }\n}\n// اگر مدل ابزار غیرمجاز (مثل refund_now) بدهد -> REJECT`,
+        dependencies: ['execution_engine', 'session_memory'],
+        adrs: ['ADR-3', 'ADR-4']
+      },
+      execution_engine: {
+        id: 'execution_engine',
+        level: 'L3',
+        title: 'موتور اجرا',
+        eng: 'Execution Engine',
+        type: 'deterministic',
+        badgeText: 'قطعی · Least Privilege',
+        badgeClass: 'bg-teal-50 text-teal-700 border border-teal-200',
+        role: 'ابزارهای تأییدشده توسط کنترل‌گر را با اصل کمترین دسترسی (Least Privilege) اجرا می‌کند و نتیجهٔ قطعی را به هماهنگ‌کننده برمی‌گرداند.',
+        inProject: 'کوئری پارامتری SQLite را روی جدول orders اجرا کرده و وضعیت shipped را برمی‌گرداند، یا رکوردی در جدول صف بررسی (refund_reviews) ثبت می‌کند.',
+        contract: `-- اجرای ابزار get_order_status با پارامتر امن\nSELECT status, delivery_date FROM orders\nWHERE order_id = :order_id\n  AND customer_id = :session_customer_id;`,
+        dependencies: ['order_system', 'knowledge_base'],
+        adrs: ['ADR-3', 'ADR-4']
+      },
+      session_memory: {
+        id: 'session_memory',
+        level: 'L3',
+        title: 'حافظهٔ نشست',
+        eng: 'Session Memory',
+        type: 'deterministic',
+        badgeText: 'قطعی · Short-term State',
+        badgeClass: 'bg-teal-50 text-teal-700 border border-teal-200',
+        role: 'وضعیت کوتاه‌مدت گفت‌وگو، شماره سفارش مطرح‌شده و شناسهٔ احراز هویت‌شدهٔ مشتری را برای ادامهٔ مکالمه و ایزوله‌سازی داده نگهداری می‌کند.',
+        inProject: 'شماره سفارش ۱۰۴۲ و شناسهٔ مشتری C001 را نگه می‌دارد تا در پرسش‌های بعدی مشتری نیاز به تکرار نباشد و دسترسی به سفارش سایر مشتریان ناممکن شود.',
+        contract: `{\n  "session_id": "sess_8812",\n  "customer_id": "C001",\n  "active_order_id": "1042",\n  "turns": 3\n}`,
+        dependencies: [],
+        adrs: ['ADR-4']
+      },
+      knowledge_base: {
+        id: 'knowledge_base',
+        level: 'L3',
+        title: 'پایگاه دانش (RAG)',
+        eng: 'Knowledge Base / Hybrid RAG',
+        type: 'deterministic',
+        badgeText: 'قطعی · Retrieval (RAG)',
+        badgeClass: 'bg-teal-50 text-teal-700 border border-teal-200',
+        role: 'اسناد و مقررات متغیر فروشگاه (قوانین ارسال، مرجوعی، گارانتی) را با بازیابی ترکیبی (Embedding + BM25) در اختیار دستیار می‌گذارد.',
+        inProject: 'به‌جای Fine-tuning مدل، مقررات فروشگاه در یک Index بیرونی نگهداری می‌شود تا با تغییر قوانین، بدون آموزش مجدد مدل، پاسخ‌ها دقیق و همراه با منبع باشند.',
+        contract: `// مسیر بازیابی در RAG\n1. Chunking (اندازه، مرز، هم‌پوشانی)\n2. Embedding + Metadata (تاریخ، نسخه)\n3. Hybrid Search (Vector + BM25)\n4. Grounded Answer with Citation`,
+        dependencies: [],
+        adrs: ['ADR-1']
+      }
+    };
+
+    /* =========================================================================
+       ۲. داده‌های تصمیم‌های معماری (ADRs)
+       ========================================================================= */
+    const ADRS = [
+      {
+        id: 'ADR-1',
+        title: 'استفاده از RAG به جای Fine-tuning برای دانش فروشگاه',
+        status: 'پذیرفته‌شده (Accepted)',
+        context: 'قوانین فروشگاه (ارسال، مرجوعی، تعرفه‌ها) و وضعیت سفارش‌ها مدام تغییر می‌کنند. دستیار باید پاسخ‌های به‌روز، قابل استناد و بدون توهم بدهد.',
+        decision: 'به‌جای ذخیرهٔ دانش در وزن‌های مدل (Fine-tuning)، مقررات فروشگاه در یک Index بیرونی (RAG با بازیابی ترکیبی Embedding + BM25) نگهداری و هنگام نیاز بازیابی می‌شود.',
+        pros: [
+          'به‌روزرسانی آنی قوانین فروشگاه بدون نیاز به آموزش مجدد مدل',
+          'امکان نمایش منبع (Citation) به کاربر و کاهش چشمگیر توهم',
+          'کاهش هزینهٔ نگهداری در مقایسه با Fine-tuning مداوم'
+        ],
+        cons: [
+          'وابستگی کیفیت پاسخ به کیفیت قطعه‌بندی (Chunking) و بازیابی',
+          'افزایش اندک مصرف توکن ورودی و Latency در هر درخواست'
+        ],
+        relatedComponents: ['knowledge_base', 'planner']
+      },
+      {
+        id: 'ADR-2',
+        title: 'اتصال به API مدل بیرونی از طریق Gateway به جای میزبانی داخلی',
+        status: 'پذیرفته‌شده (Accepted)',
+        context: 'تیم توسعه کوچک است، ترافیک اولیه نامنظم است و زیرساخت GPU داخلی برای میزبانی مدل‌های بزرگ (Self-host) هزینهٔ سنگینی دارد.',
+        decision: 'فراخوانی مدل از طریق یک لایهٔ Gateway واحد به API مدل بیرونی انجام شود تا مسیریابی، Cache، محدودیت نرخ، و امکان تعویض مدل (و حالت Mock آفلاین) فراهم باشد.',
+        pros: [
+          'حذف هزینهٔ سخت‌افزار GPU و نگهداری زیرساخت مدل',
+          'عدم وابستگی مستقیم کد برنامه به یک فروشنده خاص (به لطف Gateway)',
+          'امکان استفاده از خروجی Mock آفلاین برای تست و ارائهٔ کلاسی'
+        ],
+        cons: [
+          'خروج داده‌های متنی به سرویس بیرونی (نیازمند سیاست حریم خصوصی)',
+          'تأخیر شبکه و هزینهٔ متغیر بر اساس تعداد توکن‌ها'
+        ],
+        relatedComponents: ['foundation_model', 'llm_api']
+      },
+      {
+        id: 'ADR-3',
+        title: 'اصل «مدل پیشنهاد می‌دهد، کد اجرا می‌کند» و تأیید انسان برای بازپرداخت',
+        status: 'پذیرفته‌شده (Accepted)',
+        context: 'مدل‌های زبانی احتمالاتی هستند و ممکن است دچار خطا یا فریب (Prompt Injection) شوند. عملیات مالی مانند بازپرداخت وجه برگشت‌ناپذیر است.',
+        decision: 'Schema ابزار به‌عنوان مرز اعتماد عمل می‌کند. مدل فقط JSON پیشنهاد می‌دهد؛ کنترل‌گر آن را اعتبارسنجی می‌کند و برای بازپرداخت فقط ابزار request_refund_review (ثبت در صف اپراتور انسانی) مجاز است.',
+        pros: [
+          'کنترل کامل ریسک مالی و جلوگیری از واریز وجه اشتباه ($0.00 تا پیش از تأیید انسان)',
+          'قابلیت تست قطعی، ممیزی (Audit) و پاسخ‌گویی شفاف',
+          'حفاظت در برابر Prompt Injection و خطاهای احتمالاتی مدل'
+        ],
+        cons: [
+          'افزایش زمان انتظار مشتری برای دریافت وجه به دلیل نیاز به بررسی انسانی',
+          'نیاز به نیروی اپراتور پشتیبانی برای بررسی صف درخواست‌ها'
+        ],
+        relatedComponents: ['controller', 'execution_engine', 'operator', 'assistant_service']
+      },
+      {
+        id: 'ADR-4',
+        title: 'ایزوله‌سازی دسترسی به پایگاه داده با شناسهٔ نشست (customer_id)',
+        status: 'پذیرفته‌شده (Accepted)',
+        context: 'اگر مدل زبانی اجازه داشته باشد هر شماره سفارشی را آزادانه استعلام بگیرد، یک مشتری می‌تواند با پرسیدن شماره سفارش دیگران به اطلاعات آن‌ها دسترسی یابد.',
+        decision: 'شناسهٔ مشتری (customer_id مانند C001) هرگز از متن کاربر یا خروجی مدل گرفته نمی‌شود؛ بلکه به‌صورت قطعی از Session Memory در کنترل‌گر خوانده و به شرط WHERE کوئری SQLite تزریق می‌شود.',
+        pros: [
+          'جلوگیری کامل از نشت اطلاعات سفارش سایر مشتریان (Broken Access Control)',
+          'ایمنی در برابر تزریق SQL به دلیل استفاده از کوئری پارامتری'
+        ],
+        cons: [
+          'وابستگی تمامی ابزارهای داده‌ای به وجود یک نشست احراز هویت‌شده معتبر'
+        ],
+        relatedComponents: ['session_memory', 'controller', 'execution_engine', 'order_system']
+      }
+    ];
+
+    /* =========================================================================
+       ۳. داده‌های سناریوهای شبیه‌ساز زنده (مطابق اسلایدهای ۷ تا ۱۲)
+       ========================================================================= */
+    const SCENARIOS = [
+      {
+        id: 0,
+        title: 'پیگیری سفارش ۱۰۴۲',
+        userMsg: '«سفارش ۱۰۴۲ کجاست؟»',
+        cliCmd: 'python demo.py status',
+        finalReply: '«سفارش ۱۰۴۲ ارسال شده است.»',
+        finalNote: 'دستیار وضعیت دقیق را از پایگاه دادهٔ SQLite (با محدودیت نشست C001) دریافت کرده و بدون حدس‌زدن پاسخ داده است.',
+        safetyTag: 'پاسخ مستند به داده (Grounded)',
+        safetyClass: 'bg-teal-600 text-white',
+        steps: [
+          {
+            node: 'orchestrator',
+            nodeType: 'det',
+            title: 'گام ۱: دریافت پیام و بارگذاری نشست',
+            desc: 'هماهنگ‌کننده پیام مشتری «سفارش ۱۰۴۲ کجاست؟» را دریافت کرده و شناسهٔ نشست احراز هویت‌شده (C001) را از حافظهٔ نشست می‌خواند.',
+            log: `<div class="text-sky-400">&gt; python demo.py plan --msg "سفارش ۱۰۴۲ کجاست؟"</div><div class="text-slate-300">[Orchestrator] Loaded Session Scope: customer_id = "C001"</div>`,
+            latency: 45,
+            cost: 0.0000
+          },
+          {
+            node: 'model',
+            nodeType: 'prob',
+            title: 'گام ۲: پیشنهاد ابزار توسط مدل پایه (احتمالاتی)',
+            desc: 'برنامه‌ریز و مدل پایه تشخیص می‌دهند برای پاسخ به این سؤال باید ابزار استعلام وضعیت سفارش فراخوانی شود و یک JSON ساخت‌یافته پیشنهاد می‌دهند.',
+            log: `<div class="text-amber-400">[Foundation Model] Proposed Tool Call (JSON):</div><pre class="bg-slate-800/90 text-amber-200 p-2.5 rounded-lg border border-amber-500/30 mt-1">{\n  "tool": "get_order_status",\n  "args": { "order_id": "1042" }\n}</pre>`,
+            latency: 420,
+            cost: 0.0014
+          },
+          {
+            node: 'controller',
+            nodeType: 'det',
+            trustCross: true,
+            title: 'گام ۳: عبور از مرز اعتماد و اعتبارسنجی در کنترل‌گر',
+            desc: 'کنترل‌گر نام ابزار و Schema را بررسی می‌کند: ابزار get_order_status مجاز (Read-Only) است و شناسهٔ C001 به‌صورت قطعی از نشست تزریق می‌شود.',
+            log: `<div class="text-rose-400">[Trust Boundary · Controller] Validating JSON Schema... OK</div><div class="text-emerald-400">[Access Control] Tool "get_order_status" ALLOWED (read-only). Injected scope: C001</div>`,
+            latency: 435,
+            cost: 0.0014
+          },
+          {
+            node: 'engine',
+            nodeType: 'det',
+            title: 'گام ۴: اجرای کوئری SQLite توسط موتور اجرا',
+            desc: 'موتور اجرا کوئری پارامتری را روی پایگاه دادهٔ سفارش‌ها اجرا می‌کند تا وضعیت واقعی سفارش ۱۰۴۲ متعلق به مشتری C001 خوانده شود.',
+            log: `<div class="text-teal-400">&gt; python demo.py status</div><pre class="bg-slate-800/90 text-teal-200 p-2.5 rounded-lg border border-teal-500/30 mt-1">SELECT status FROM orders\nWHERE order_id = '1042' AND customer_id = 'C001';</pre><div class="text-emerald-400 mt-1">Session scope: C001 | Tool result: "shipped"</div>`,
+            latency: 468,
+            cost: 0.0014
+          },
+          {
+            node: 'orchestrator',
+            nodeType: 'det',
+            title: 'گام ۵: تولید پاسخ نهایی به مشتری',
+            desc: 'نتیجهٔ قطعی (shipped) به هماهنگ‌کننده برمی‌گردد و پاسخ دقیق به مشتری نمایش داده می‌شود.',
+            log: `<div class="text-emerald-300 font-bold">[Assistant Reply] «سفارش ۱۰۴۲ ارسال شده است.»</div>`,
+            latency: 610,
+            cost: 0.0021,
+            correctness: 'دقیق (100%)',
+            showFinal: true
+          }
+        ]
+      },
+      {
+        id: 1,
+        title: 'جلوگیری از توهم (تاریخ تحویل نامشخص)',
+        userMsg: '«سفارش ۱۰۴۲ فردا می‌رسد؟»',
+        cliCmd: 'python demo.py status --check-delivery',
+        finalReply: '«سفارش ۱۰۴۲ ارسال شده، اما هنوز تاریخ تحویلش مشخص نیست.»',
+        finalNote: 'چرا نباید تحویل فردا را تأیید کرد؟ چون در پایگاه داده مقدار delivery_date برابر null است و برای اعلام زمان تحویل به اطلاعات شرکت حمل‌ونقل نیاز داریم.',
+        safetyTag: 'جلوگیری از توهم (Anti-Hallucination)',
+        safetyClass: 'bg-amber-600 text-white',
+        steps: [
+          {
+            node: 'orchestrator',
+            nodeType: 'det',
+            title: 'گام ۱: دریافت پرسش دربارهٔ زمان تحویل',
+            desc: 'مشتری می‌پرسد آیا سفارش ۱۰۴۲ فردا به دستش می‌رسد؟ هماهنگ‌کننده درخواست را به همراه محدودهٔ نشست C001 به جریان می‌اندازد.',
+            log: `<div class="text-sky-400">&gt; User: "سفارش ۱۰۴۲ فردا می‌رسد؟"</div><div class="text-slate-300">[Orchestrator] Forwarding with session customer_id="C001"</div>`,
+            latency: 40,
+            cost: 0.0000
+          },
+          {
+            node: 'model',
+            nodeType: 'prob',
+            title: 'گام ۲: پیشنهاد استعلام جزئیات سفارش',
+            desc: 'مدل پایه به‌جای حدس زدن، ابزار بررسی وضعیت سفارش ۱۰۴۲ را پیشنهاد می‌دهد.',
+            log: `<div class="text-amber-400">[Foundation Model] Proposed Tool Call:</div><pre class="bg-slate-800/90 text-amber-200 p-2.5 rounded-lg border border-amber-500/30 mt-1">{\n  "tool": "get_order_status",\n  "args": { "order_id": "1042" }\n}</pre>`,
+            latency: 390,
+            cost: 0.0013
+          },
+          {
+            node: 'controller',
+            nodeType: 'det',
+            trustCross: true,
+            title: 'گام ۳: تأیید مجوز در مرز اعتماد',
+            desc: 'کنترل‌گر ساختار JSON و مجوز خواندن سفارش ۱۰۴۲ را برای مشتری C001 تأیید می‌کند.',
+            log: `<div class="text-rose-400">[Trust Boundary · Controller] Schema valid &amp; Scope C001 verified.</div>`,
+            latency: 405,
+            cost: 0.0013
+          },
+          {
+            node: 'db',
+            nodeType: 'det',
+            title: 'گام ۴: خواندن رکورد سفارش از SQLite (مشاهدهٔ مقدار null)',
+            desc: 'موتور اجرا رکورد ثبت‌شده را از پایگاه داده می‌خواند: وضعیت shipped است، اما فیلد delivery_date برابر null می‌باشد.',
+            log: `<div class="text-teal-400">[SQLite Result] Order #1042 Record:</div><pre class="bg-slate-800/90 text-sky-200 p-2.5 rounded-lg border border-sky-500/30 mt-1">order_id:      "1042"\nstatus:        "shipped"\ndelivery_date: null   // &lt;-- تاریخ تحویل ثبت نشده است</pre>`,
+            latency: 440,
+            cost: 0.0013
+          },
+          {
+            node: 'orchestrator',
+            nodeType: 'det',
+            title: 'گام ۵: پاسخ صادقانه بدون توهم',
+            desc: 'بر اساس قرارداد Prompt و دادهٔ قطعی، دستیار از تأیید تحویل فردا خودداری کرده و دقیقاً آنچه در سیستم ثبت شده را اعلام می‌کند.',
+            log: `<div class="text-amber-300 font-bold">[Grounded Reply] «سفارش ۱۰۴۲ ارسال شده، اما هنوز تاریخ تحویلش مشخص نیست.»</div>`,
+            latency: 640,
+            cost: 0.0022,
+            correctness: 'صادقانه (بدون توهم)',
+            showFinal: true
+          }
+        ]
+      },
+      {
+        id: 2,
+        title: 'درخواست بازپرداخت و مرز اعتماد',
+        userMsg: '«می‌خوام پول سفارش ۱۰۴۲ رو پس بگیرم»',
+        cliCmd: 'python demo.py refund && python demo.py verify',
+        finalReply: '«درخواست بازپرداخت شما برای سفارش ۱۰۴۲ در صف بررسی کارشناس پشتیبانی ثبت شد. پس از تأیید اپراتور، مبلغ به حساب شما بازگردانده می‌شود.»',
+        finalNote: 'نکتهٔ امنیتی (ADR-3): دستیار فقط درخواست را در صف بررسی ثبت کرد (Open reviews: 1). هنوز هیچ پولی برنگشته است (Refunded: $0.00) و تصمیم مالی بر عهدهٔ انسان است.',
+        safetyTag: 'حفاظت مالی · منتظر تأیید انسان (HITL)',
+        safetyClass: 'bg-rose-600 text-white',
+        steps: [
+          {
+            node: 'orchestrator',
+            nodeType: 'det',
+            title: 'گام ۱: دریافت درخواست حساس مالی',
+            desc: 'مشتری درخواست بازپرداخت وجه سفارش ۱۰۴۲ را ارسال می‌کند. هماهنگ‌کننده درخواست را با نشست C001 به برنامه‌ریز می‌سپارد.',
+            log: `<div class="text-sky-400">&gt; python demo.py refund</div><div class="text-slate-300">[Orchestrator] High-impact intent detected (Refund Request) · Scope: C001</div>`,
+            latency: 50,
+            cost: 0.0000
+          },
+          {
+            node: 'model',
+            nodeType: 'prob',
+            title: 'گام ۲: پیشنهاد ابزار صف بررسی توسط مدل',
+            desc: 'در فهرست ابزارهای مجاز، ابزار واریز مستقیم پول وجود ندارد؛ مدل پایه ابزار request_refund_review را پیشنهاد می‌دهد.',
+            log: `<div class="text-amber-400">[Foundation Model] Proposed Tool Call:</div><pre class="bg-slate-800/90 text-amber-200 p-2.5 rounded-lg border border-amber-500/30 mt-1">{\n  "tool": "request_refund_review",\n  "args": {\n    "order_id": "1042",\n    "reason": "customer_requested_refund"\n  }\n}</pre>`,
+            latency: 460,
+            cost: 0.0016
+          },
+          {
+            node: 'controller',
+            nodeType: 'det',
+            trustCross: true,
+            title: 'گام ۳: اعمال سیاست امنیتی در کنترل‌گر (مرز اعتماد)',
+            desc: 'کنترل‌گر بررسی می‌کند: بازپرداخت مستقیم مسدود است، اما ثبت در صف بررسی اپراتور (request_refund_review) با محدودیت C001 مجاز است.',
+            log: `<div class="text-rose-400">[Trust Boundary · Policy Gate] Direct payout: BLOCKED (Requires Human)</div><div class="text-emerald-400">[Access Control] Queueing tool "request_refund_review" ALLOWED for C001</div>`,
+            latency: 480,
+            cost: 0.0016
+          },
+          {
+            node: 'db',
+            nodeType: 'det',
+            title: 'گام ۴: ثبت در صف بررسی SQLite (تغییر وضعیت دیتابیس)',
+            desc: 'موتور اجرا رکورد درخواست را در صف بررسی اپراتور ثبت می‌کند. تعداد درخواست‌های باز به ۱ می‌رسد اما مبلغ بازپرداخت‌شده همچنان $0.00 باقی می‌ماند.',
+            log: `<div class="text-teal-400">&gt; python demo.py verify</div><pre class="bg-slate-800/90 text-emerald-300 p-2.5 rounded-lg border border-emerald-500/30 mt-1">INSERT INTO refund_reviews (order_id, customer_id, status)\nVALUES ('1042', 'C001', 'OPEN');\n\n-- Database State After Execution:\nOrder 1042 status : shipped\nOpen reviews      : 1\nRefunded amount   : $0.00</pre>`,
+            latency: 530,
+            cost: 0.0016,
+            updateDbReviews: 1
+          },
+          {
+            node: 'orchestrator',
+            nodeType: 'det',
+            title: 'گام ۵: اعلام شفاف وضعیت به مشتری',
+            desc: 'دستیار به مشتری اطلاع می‌دهد که درخواستش در صف بررسی ثبت شده و هیچ ادعایی مبنی بر واریز آنی وجه نمی‌کند.',
+            log: `<div class="text-rose-300 font-bold">[Safe Reply] درخواست بازپرداخت سفارش ۱۰۴۲ در صف بررسی اپراتور ثبت شد (مبلغ بازپرداخت‌شده: $0.00).</div>`,
+            latency: 690,
+            cost: 0.0024,
+            correctness: 'ایمن (تأیید انسان)',
+            showFinal: true
+          }
+        ]
+      }
+    ];
+
+    /* =========================================================================
+       ۴. وضعیت (State) برنامه و مدیریت تب‌ها و سطوح C4
+       ========================================================================= */
+    let currentTab = 'arch';      // 'arch' | 'demo'
+    let currentLevel = 'L2';      // 'L2' | 'L3'
+    let currentFilter = 'all';    // 'all' | 'deterministic' | 'probabilistic' | 'trust'
+
+    function switchMainTab(tab) {
+      currentTab = tab;
+      const viewArch = document.getElementById('view-arch');
+      const viewDemo = document.getElementById('view-demo');
+      const tabArch = document.getElementById('tab-arch');
+      const tabDemo = document.getElementById('tab-demo');
+      const backBtn = document.getElementById('btn-back-l2');
+
+      if (tab === 'arch') {
+        viewArch.classList.remove('hidden');
+        viewDemo.classList.add('hidden');
+        tabArch.className = 'px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-teal-700 shadow-sm';
+        tabDemo.className = 'px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:text-slate-900';
+        backBtn.classList.toggle('hidden', currentLevel !== 'L3');
+        requestAnimationFrame(() => drawCurrentArrows());
+      } else {
+        viewArch.classList.add('hidden');
+        viewDemo.classList.remove('hidden');
+        tabDemo.className = 'px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-teal-700 shadow-sm';
+        tabArch.className = 'px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:text-slate-900';
+        backBtn.classList.add('hidden');
+        stopAutoPlay();
+      }
+    }
+
+    function switchToLevel(level) {
+      if (currentTab !== 'arch') switchMainTab('arch');
+      currentLevel = level;
+
+      const cL2 = document.getElementById('canvas-l2');
+      const cL3 = document.getElementById('canvas-l3');
+      const bcSep = document.getElementById('bc-sep');
+      const bcL3 = document.getElementById('bc-l3');
+      const bcL2 = document.getElementById('bc-l2');
+      const backBtn = document.getElementById('btn-back-l2');
+      const levelBadge = document.getElementById('level-badge');
+
+      if (level === 'L2') {
+        cL2.classList.remove('hidden');
+        cL3.classList.add('hidden');
+        bcSep.classList.add('hidden');
+        bcL3.classList.add('hidden');
+        bcL2.classList.add('text-teal-700');
+        bcL2.classList.remove('text-slate-500');
+        backBtn.classList.add('hidden');
+        levelBadge.textContent = 'C4 · L2 Container Diagram';
+      } else {
+        cL2.classList.add('hidden');
+        cL3.classList.remove('hidden');
+        bcSep.classList.remove('hidden');
+        bcL3.classList.remove('hidden');
+        bcL2.classList.remove('text-teal-700');
+        bcL2.classList.add('text-slate-500');
+        backBtn.classList.remove('hidden');
+        levelBadge.textContent = 'C4 · L3 Component Diagram';
+      }
+
+      applyFilterVisuals();
+      requestAnimationFrame(() => drawCurrentArrows());
+    }
+
+    /* =========================================================================
+       ۵. فیلتر و هایلایت تعاملی (Legend & Filter Bar)
+       ========================================================================= */
+    function setFilter(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        const f = btn.getAttribute('data-filter');
+        if (f === filter) {
+          btn.classList.add('bg-slate-900', 'text-white', 'border-slate-900');
+          btn.classList.remove('bg-white', 'text-slate-700', 'border-slate-200');
+        } else {
+          btn.classList.remove('bg-slate-900', 'text-white', 'border-slate-900');
+          btn.classList.add('bg-white', 'text-slate-700', 'border-slate-200');
+        }
+      });
+      applyFilterVisuals();
+    }
+
+    function applyFilterVisuals() {
+      const container = currentLevel === 'L2' ? document.getElementById('canvas-l2') : document.getElementById('canvas-l3');
+      const nodes = container.querySelectorAll('.c4-node');
+      const trustLine = document.getElementById('l3-trust-line');
+
+      nodes.forEach(node => {
+        const type = node.getAttribute('data-type');
+        const isTrust = node.getAttribute('data-trust') === 'true';
+        node.classList.remove('is-dimmed');
+
+        if (currentFilter === 'deterministic' && type !== 'deterministic') {
+          node.classList.add('is-dimmed');
+        } else if (currentFilter === 'probabilistic' && type !== 'probabilistic') {
+          node.classList.add('is-dimmed');
+        } else if (currentFilter === 'trust' && !isTrust) {
+          node.classList.add('is-dimmed');
+        }
+      });
+
+      if (trustLine) {
+        if (currentFilter === 'trust') {
+          trustLine.classList.add('scale-[1.02]');
+        } else {
+          trustLine.classList.remove('scale-[1.02]');
+        }
+      }
+    }
+
+    /* =========================================================================
+       ۶. ترسیم پویا و دقیق فلش‌های SVG بدون هم‌پوشانی (L2 و L3)
+       ========================================================================= */
+    function getPort(el, containerRect, side, offset = 0) {
+      const r = el.getBoundingClientRect();
+      const x = r.left - containerRect.left;
+      const y = r.top - containerRect.top;
+      const w = r.width;
+      const h = r.height;
+
+      switch (side) {
+        case 'left':   return { x: x, y: y + h / 2 + offset };
+        case 'right':  return { x: x + w, y: y + h / 2 + offset };
+        case 'top':    return { x: x + w / 2 + offset, y: y };
+        case 'bottom': return { x: x + w / 2 + offset, y: y + h };
+      }
+    }
+
+    function createArrowSvg(p1, p2, label, opts = {}) {
+      const color = opts.color || '#64748b';
+      const dashed = opts.dashed ? 'stroke-dasharray="6 4"' : '';
+      const markerId = opts.marker || 'arrow-slate';
+
+      // مسیر منحنی نرم یا مستقیم
+      let pathD = '';
+      let lx = (p1.x + p2.x) / 2;
+      let ly = (p1.y + p2.y) / 2;
+
+      if (opts.curve === 'bottom-loop') {
+        const midY = Math.max(p1.y, p2.y) + 52;
+        pathD = `M ${p1.x} ${p1.y} C ${p1.x} ${midY}, ${p2.x} ${midY}, ${p2.x} ${p2.y}`;
+        ly = midY - 12;
+      } else if (opts.curve === 's-horiz') {
+        const midX = (p1.x + p2.x) / 2;
+        pathD = `M ${p1.x} ${p1.y} C ${midX} ${p1.y}, ${midX} ${p2.y}, ${p2.x} ${p2.y}`;
+      } else if (opts.curve === 's-vert') {
+        const midY = (p1.y + p2.y) / 2;
+        pathD = `M ${p1.x} ${p1.y} C ${p1.x} ${midY}, ${p2.x} ${midY}, ${p2.x} ${p2.y}`;
+      } else {
+        pathD = `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
+      }
+
+      if (opts.labelOffsetY) ly += opts.labelOffsetY;
+      if (opts.labelOffsetX) lx += opts.labelOffsetX;
+
+      let labelMarkup = '';
+      if (label) {
+        const estWidth = Math.max(70, label.length * 6.3 + 18);
+        labelMarkup = `
+          <g transform="translate(${lx}, ${ly})">
+            <rect x="${-estWidth / 2}" y="-11" width="${estWidth}" height="22" rx="6" fill="#ffffff" stroke="${color}" stroke-opacity="0.35" stroke-width="1"></rect>
+            <text x="0" y="3.5" text-anchor="middle" fill="#334155" font-size="10.5" font-weight="600" font-family="Vazirmatn, sans-serif">${label}</text>
+          </g>
+        `;
+      }
+
+      return `
+        <path d="${pathD}" fill="none" stroke="${color}" stroke-width="1.9" ${dashed} marker-end="url(#${markerId})"></path>
+        ${labelMarkup}
+      `;
+    }
+
+    function svgDefs() {
+      return `
+        <defs>
+          <marker id="arrow-slate" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"></path>
+          </marker>
+          <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#0d9488"></path>
+          </marker>
+          <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#d97706"></path>
+          </marker>
+          <marker id="arrow-rose" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#e11d48"></path>
+          </marker>
+        </defs>
+      `;
+    }
+
+    function drawL2Arrows() {
+      const svg = document.getElementById('svg-l2');
+      const container = document.getElementById('canvas-l2');
+      if (!svg || window.innerWidth < 768) return;
+
+      const cRect = container.getBoundingClientRect();
+      if (cRect.width === 0) return;
+
+      const elCust = document.getElementById('l2-customer');
+      const elOp   = document.getElementById('l2-operator');
+      const elChat = document.getElementById('l2-chat');
+      const elAsst = document.getElementById('l2-assistant');
+      const elLlm  = document.getElementById('l2-llm');
+      const elOrd  = document.getElementById('l2-orders');
+
+      let html = svgDefs();
+
+      // مشتری -> رابط چت (از سمت چپ کارت مشتری به سمت راست رابط چت در RTL)
+      html += createArrowSvg(
+        getPort(elCust, cRect, 'left'),
+        getPort(elChat, cRect, 'right'),
+        'پیام / پاسخ',
+        { color: '#0d9488', marker: 'arrow-teal', curve: 's-horiz' }
+      );
+
+      // رابط چت -> سرویس دستیار
+      html += createArrowSvg(
+        getPort(elChat, cRect, 'bottom'),
+        getPort(elAsst, cRect, 'top'),
+        'درخواست HTTP',
+        { color: '#0d9488', marker: 'arrow-teal' }
+      );
+
+      // سرویس دستیار -> API مدل زبانی
+      html += createArrowSvg(
+        getPort(elAsst, cRect, 'left', -18),
+        getPort(elLlm, cRect, 'right'),
+        'فراخوانی مدل (JSON)',
+        { color: '#d97706', marker: 'arrow-amber', dashed: true, curve: 's-horiz', labelOffsetY: -12 }
+      );
+
+      // سرویس دستیار -> سامانه سفارش‌ها
+      html += createArrowSvg(
+        getPort(elAsst, cRect, 'left', 18),
+        getPort(elOrd, cRect, 'right', -10),
+        'استعلام و ثبت درخواست',
+        { color: '#0d9488', marker: 'arrow-teal', curve: 's-horiz', labelOffsetY: 14 }
+      );
+
+      // اپراتور پشتیبانی -> سامانه سفارش‌ها (مسیر پایینی تمیز بدون تداخل)
+      html += createArrowSvg(
+        getPort(elOp, cRect, 'bottom'),
+        getPort(elOrd, cRect, 'bottom'),
+        'بررسی صف بازپرداخت (تأیید انسان)',
+        { color: '#64748b', marker: 'arrow-slate', dashed: true, curve: 'bottom-loop' }
+      );
+
+      svg.innerHTML = html;
+    }
+
+    function drawL3Arrows() {
+      const svg = document.getElementById('svg-l3');
+      const stage = document.getElementById('l3-stage');
+      if (!svg || window.innerWidth < 768) return;
+
+      const cRect = stage.getBoundingClientRect();
+      if (cRect.width === 0) return;
+
+      const elPlan = document.getElementById('l3-planner');
+      const elMod  = document.getElementById('l3-model');
+      const elOrch = document.getElementById('l3-orchestrator');
+      const elCtrl = document.getElementById('l3-controller');
+      const elMem  = document.getElementById('l3-memory');
+      const elEng  = document.getElementById('l3-engine');
+      const elKb   = document.getElementById('l3-kb');
+
+      let html = svgDefs();
+
+      // برنامه‌ریز -> مدل پایه (افقی در ردیف بالا)
+      html += createArrowSvg(
+        getPort(elPlan, cRect, 'left'),
+        getPort(elMod, cRect, 'right'),
+        'Prompt و گام بعد',
+        { color: '#d97706', marker: 'arrow-amber', dashed: true }
+      );
+
+      // هماهنگ‌کننده -> برنامه‌ریز (عمودی رو به بالا)
+      html += createArrowSvg(
+        getPort(elOrch, cRect, 'top'),
+        getPort(elPlan, cRect, 'bottom'),
+        'درخواست + زمینه',
+        { color: '#64748b', marker: 'arrow-slate', labelOffsetY: -22 }
+      );
+
+      // مدل پایه -> کنترل‌گر (عمودی عبور از مرز اعتماد)
+      html += createArrowSvg(
+        getPort(elMod, cRect, 'bottom'),
+        getPort(elCtrl, cRect, 'top'),
+        'پیشنهاد JSON',
+        { color: '#e11d48', marker: 'arrow-rose', dashed: true, labelOffsetY: 22 }
+      );
+
+      // هماهنگ‌کننده -> کنترل‌گر (افقی در ردیف وسط)
+      html += createArrowSvg(
+        getPort(elOrch, cRect, 'left'),
+        getPort(elCtrl, cRect, 'right'),
+        'validate / gate',
+        { color: '#0d9488', marker: 'arrow-teal' }
+      );
+
+      // هماهنگ‌کننده -> حافظه نشست
+      html += createArrowSvg(
+        getPort(elOrch, cRect, 'bottom', 40),
+        getPort(elMem, cRect, 'top'),
+        'نشست C001',
+        { color: '#0d9488', marker: 'arrow-teal', curve: 's-vert' }
+      );
+
+      // کنترل‌گر -> موتور اجرا
+      html += createArrowSvg(
+        getPort(elCtrl, cRect, 'bottom', 50),
+        getPort(elEng, cRect, 'top', -20),
+        'اجرای مجاز',
+        { color: '#0d9488', marker: 'arrow-teal', curve: 's-vert' }
+      );
+
+      // موتور اجرا -> پایگاه دانش
+      html += createArrowSvg(
+        getPort(elEng, cRect, 'left'),
+        getPort(elKb, cRect, 'right'),
+        'RAG',
+        { color: '#0d9488', marker: 'arrow-teal' }
+      );
+
+      svg.innerHTML = html;
+    }
+
+    function drawCurrentArrows() {
+      if (currentTab !== 'arch') return;
+      if (currentLevel === 'L2') drawL2Arrows();
+      else drawL3Arrows();
+    }
+
+    /* =========================================================================
+       ۷. پنل کشویی جزئیات مؤلفه (Slide-over Drawer)
+       ========================================================================= */
+    function openDrawer(compId) {
+      const comp = COMPONENTS[compId];
+      if (!comp) return;
+
+      document.getElementById('dr-title').textContent = comp.title;
+      document.getElementById('dr-eng').textContent = comp.eng;
+      const badge = document.getElementById('dr-badge');
+      badge.textContent = comp.badgeText;
+      badge.className = `text-[11px] font-bold px-2 py-0.5 rounded-md ${comp.badgeClass}`;
+
+      const depsHtml = comp.dependencies.length
+        ? comp.dependencies.map(depId => {
+            const d = COMPONENTS[depId];
+            if (!d) return '';
+            return `<button onclick="jumpToComponent('${depId}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 border border-slate-200 transition-colors">${d.title}</button>`;
+          }).join('')
+        : '<span class="text-xs text-slate-400">وابستگی خروجی ندارد</span>';
+
+      const adrsHtml = comp.adrs.length
+        ? comp.adrs.map(adrId => {
+            const adr = ADRS.find(a => a.id === adrId);
+            return `
+              <button onclick="openAdrModal('${adrId}')" class="w-full text-right p-3 rounded-xl bg-slate-50 hover:bg-teal-50 border border-slate-200 hover:border-teal-400 transition-all flex items-center justify-between gap-2 group">
+                <div>
+                  <span class="text-[11px] font-mono font-bold text-teal-700 bg-teal-100 px-1.5 py-0.5 rounded">${adr.id}</span>
+                  <div class="text-xs font-bold text-slate-800 mt-1">${adr.title}</div>
+                </div>
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-teal-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path>
+                </svg>
+              </button>
+            `;
+          }).join('')
+        : '<span class="text-xs text-slate-400">تصمیم معماری مستقیمی ثبت نشده است</span>';
+
+      const drillDownBtn = comp.hasDrillDown
+        ? `<button onclick="closeDrawer(); switchToLevel('L3');" class="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-2">
+            <span>ورود به سطح ۳ (مشاهدهٔ داخل سرویس دستیار)</span>
+            <span class="font-mono text-xs bg-white/20 px-1.5 py-0.5 rounded">L3 ↵</span>
+          </button>`
+        : '';
+
+      document.getElementById('dr-content').innerHTML = `
+        ${drillDownBtn}
+        <div>
+          <h4 class="text-xs font-bold text-slate-400 uppercase mb-1.5">نقش در معماری</h4>
+          <p class="text-slate-700 leading-relaxed">${comp.role}</p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-teal-50/60 border border-teal-200/80">
+          <h4 class="text-xs font-extrabold text-teal-800 mb-1.5">در این پروژه (مثال سفارش ۱۰۴۲)</h4>
+          <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">${comp.inProject}</p>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-bold text-slate-400 uppercase mb-1.5">قرارداد (Contract / Schema)</h4>
+          <pre dir="ltr" class="bg-slate-900 text-slate-100 font-mono text-xs p-3.5 rounded-xl overflow-x-auto leading-relaxed border border-slate-800">${escapeHtml(comp.contract)}</pre>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-bold text-slate-400 uppercase mb-2">وابستگی‌ها</h4>
+          <div class="flex flex-wrap gap-2">${depsHtml}</div>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-bold text-slate-400 uppercase mb-2">تصمیم‌های معماری مرتبط (ADR)</h4>
+          <div class="space-y-2">${adrsHtml}</div>
+        </div>
+      `;
+
+      document.getElementById('drawer-backdrop').classList.remove('hidden');
+      document.getElementById('detail-drawer').classList.remove('drawer-closed');
+      document.getElementById('detail-drawer').classList.add('drawer-open');
+    }
+
+    function closeDrawer() {
+      document.getElementById('drawer-backdrop').classList.add('hidden');
+      document.getElementById('detail-drawer').classList.add('drawer-closed');
+      document.getElementById('detail-drawer').classList.remove('drawer-open');
+    }
+
+    function jumpToComponent(compId) {
+      const comp = COMPONENTS[compId];
+      if (!comp) return;
+      closeAdrModal();
+      switchToLevel(comp.level);
+      setTimeout(() => openDrawer(compId), 120);
+    }
+
+    /* =========================================================================
+       ۸. پنجرهٔ تصمیم‌های معماری (ADR Modal)
+       ========================================================================= */
+    function renderAdrs() {
+      const container = document.getElementById('adr-list');
+      container.innerHTML = ADRS.map(adr => {
+        const chips = adr.relatedComponents.map(cid => {
+          const c = COMPONENTS[cid];
+          if (!c) return '';
+          return `<button onclick="jumpToComponent('${cid}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white hover:bg-teal-50 text-teal-700 border border-teal-200 transition-colors">
+            <span>${c.title}</span>
+            <span class="text-[10px] font-mono text-slate-400">(${c.level})</span>
+          </button>`;
+        }).join('');
+
+        return `
+          <article id="card-${adr.id}" class="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 transition-all">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-mono text-xs font-bold">${adr.id}</span>
+                <h3 class="text-sm sm:text-base font-extrabold text-slate-900">${adr.title}</h3>
+              </div>
+              <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">${adr.status}</span>
+            </div>
+
+            <div class="space-y-3 text-xs sm:text-sm text-slate-700 leading-relaxed">
+              <div><strong class="text-slate-900">زمینه:</strong> ${adr.context}</div>
+              <div class="p-3 rounded-xl bg-white border border-slate-200">
+                <strong class="text-teal-800">تصمیم:</strong> ${adr.decision}
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/70">
+                  <div class="text-xs font-extrabold text-emerald-800 mb-1.5">مزایا</div>
+                  <ul class="list-disc list-inside space-y-1 text-xs text-slate-700">
+                    ${adr.pros.map(p => `<li>${p}</li>`).join('')}
+                  </ul>
+                </div>
+                <div class="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70">
+                  <div class="text-xs font-extrabold text-amber-800 mb-1.5">معایب و مصالحه‌ها</div>
+                  <ul class="list-disc list-inside space-y-1 text-xs text-slate-700">
+                    ${adr.cons.map(c => `<li>${c}</li>`).join('')}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-200/80 flex flex-wrap items-center gap-2">
+              <span class="text-xs font-bold text-slate-500">مؤلفه‌های مرتبط:</span>
+              ${chips}
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function openAdrModal(targetAdrId = null) {
+      document.getElementById('adr-modal').classList.remove('hidden');
+      if (targetAdrId) {
+        setTimeout(() => {
+          const el = document.getElementById(`card-${targetAdrId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.remove('adr-highlight');
+            void el.offsetWidth; // trigger reflow
+            el.classList.add('adr-highlight');
+          }
+        }, 80);
+      }
+    }
+
+    function closeAdrModal() {
+      document.getElementById('adr-modal').classList.add('hidden');
+    }
+
+    /* =========================================================================
+       ۹. منطق شبیه‌ساز زنده (Live Demo)
+       ========================================================================= */
+    let activeScenarioIdx = 0;
+    let currentStepIdx = -1;
+    let autoPlayTimer = null;
+    let dbOpenReviews = 0;
+
+    function selectScenario(idx) {
+      stopAutoPlay();
+      activeScenarioIdx = idx;
+      currentStepIdx = -1;
+
+      const sc = SCENARIOS[idx];
+      document.getElementById('sim-user-msg').textContent = sc.userMsg;
+      document.getElementById('sim-cli-cmd').textContent = sc.cliCmd;
+
+      // استایل دکمه‌های سناریو
+      document.querySelectorAll('.sc-btn').forEach((btn, i) => {
+        if (i === idx) {
+          btn.className = 'sc-btn text-right p-3 rounded-xl border-2 border-teal-600 bg-teal-50/70 shadow-xs transition-all';
+        } else {
+          btn.className = 'sc-btn text-right p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 transition-all';
+        }
+      });
+
+      clearSimHighlights();
+      document.getElementById('sim-step-badge').textContent = `آماده (0 / ${sc.steps.length})`;
+      document.getElementById('sim-exp-title').textContent = `سناریوی انتخاب‌شده: ${sc.title}`;
+      document.getElementById('sim-exp-body').textContent = 'دکمهٔ «گام بعدی» یا «اجرای خودکار» را بزنید تا مراحل حلقهٔ عامل اجرا شوند.';
+      document.getElementById('sim-final-box').classList.add('hidden');
+      document.getElementById('metric-latency').textContent = '0 ms';
+      document.getElementById('metric-cost').textContent = '$0.0000';
+      document.getElementById('metric-correctness').textContent = '—';
+      document.getElementById('metric-correctness').className = 'text-xs font-bold text-slate-400';
+
+      const term = document.getElementById('sim-terminal');
+      term.innerHTML = `
+        <div class="text-slate-400">&gt; # Scenario ${idx + 1}: ${escapeHtml(sc.title)}</div>
+        <div class="text-slate-500">// منتظر شروع اجرا... (Open reviews: ${dbOpenReviews}, Refunded: $0.00)</div>
+      `;
+    }
+
+    function clearSimHighlights() {
+      document.querySelectorAll('.sim-node').forEach(n => {
+        n.classList.remove('sim-active-det', 'sim-active-prob');
+      });
+      document.getElementById('sim-trust-boundary').classList.remove('scale-105');
+    }
+
+    function nextSimStep() {
+      const sc = SCENARIOS[activeScenarioIdx];
+      if (currentStepIdx >= sc.steps.length - 1) {
+        stopAutoPlay();
+        return;
+      }
+
+      currentStepIdx++;
+      const step = sc.steps[currentStepIdx];
+
+      // هایلایت گره فعال
+      clearSimHighlights();
+      const nodeEl = document.getElementById(`sim-node-${step.node}`);
+      if (nodeEl) {
+        nodeEl.classList.add(step.nodeType === 'prob' ? 'sim-active-prob' : 'sim-active-det');
+      }
+      if (step.trustCross) {
+        document.getElementById('sim-trust-boundary').classList.add('scale-105');
+      }
+
+      // به‌روزرسانی توضیحات و شماره گام
+      document.getElementById('sim-step-badge').textContent = `گام ${currentStepIdx + 1} از ${sc.steps.length}`;
+      document.getElementById('sim-exp-title').textContent = step.title;
+      document.getElementById('sim-exp-body').textContent = step.desc;
+
+      // افزودن به ترمینال
+      const term = document.getElementById('sim-terminal');
+      if (currentStepIdx === 0) term.innerHTML = '';
+      const entry = document.createElement('div');
+      entry.innerHTML = step.log;
+      term.appendChild(entry);
+      term.scrollTop = term.scrollHeight;
+
+      // به‌روزرسانی متریک‌ها
+      document.getElementById('metric-latency').textContent = `${step.latency} ms`;
+      document.getElementById('metric-cost').textContent = `$${step.cost.toFixed(4)}`;
+      if (step.correctness) {
+        const cEl = document.getElementById('metric-correctness');
+        cEl.textContent = step.correctness;
+        cEl.className = 'text-xs font-bold text-emerald-700';
+      }
+
+      // به‌روزرسانی وضعیت دیتابیس در سناریو ۳
+      if (typeof step.updateDbReviews === 'number') {
+        dbOpenReviews = step.updateDbReviews;
+        document.getElementById('db-reviews').textContent = dbOpenReviews;
+        const card = document.getElementById('db-reviews-card');
+        card.classList.add('bg-amber-50', 'border-amber-400', 'ring-2', 'ring-amber-200');
+      }
+
+      // نمایش پاسخ نهایی در گام آخر
+      if (step.showFinal) {
+        const finalBox = document.getElementById('sim-final-box');
+        finalBox.classList.remove('hidden');
+        document.getElementById('sim-final-reply').textContent = sc.finalReply;
+        document.getElementById('sim-final-note').textContent = sc.finalNote;
+        const tag = document.getElementById('sim-safety-tag');
+        tag.textContent = sc.safetyTag;
+        tag.className = `text-[11px] font-bold px-2.5 py-0.5 rounded-full ${sc.safetyClass}`;
+        stopAutoPlay();
+      }
+    }
+
+    function toggleAutoPlay() {
+      if (autoPlayTimer) {
+        stopAutoPlay();
+        return;
+      }
+      const sc = SCENARIOS[activeScenarioIdx];
+      if (currentStepIdx >= sc.steps.length - 1) {
+        selectScenario(activeScenarioIdx);
+      }
+      document.getElementById('text-auto-play').textContent = 'توقف';
+      nextSimStep();
+      autoPlayTimer = setInterval(() => {
+        if (currentStepIdx >= sc.steps.length - 1) {
+          stopAutoPlay();
+        } else {
+          nextSimStep();
+        }
+      }, 1700);
+    }
+
+    function stopAutoPlay() {
+      if (autoPlayTimer) {
+        clearInterval(autoPlayTimer);
+        autoPlayTimer = null;
+      }
+      document.getElementById('text-auto-play').textContent = 'اجرای خودکار';
+    }
+
+    function resetSimulation() {
+      stopAutoPlay();
+      dbOpenReviews = 0;
+      document.getElementById('db-status').textContent = 'shipped';
+      document.getElementById('db-reviews').textContent = '0';
+      document.getElementById('db-refunded').textContent = '$0.00';
+      const card = document.getElementById('db-reviews-card');
+      card.classList.remove('bg-amber-50', 'border-amber-400', 'ring-2', 'ring-amber-200');
+
+      selectScenario(activeScenarioIdx);
+      const term = document.getElementById('sim-terminal');
+      term.innerHTML = `
+        <div class="text-slate-400">&gt; python demo.py reset</div>
+        <div class="text-emerald-400">Order 1042: shipped &nbsp;/&nbsp; Open reviews: 0 &nbsp;/&nbsp; Refunded: $0.00</div>
+        <div class="text-slate-500">// پایگاه داده به وضعیت اولیه بازنشانی شد.</div>
+      `;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /* =========================================================================
+       ۱۰. مقداردهی اولیه و کلیدهای میانبر (مناسب ارائه روی پروژکتور)
+       ========================================================================= */
+    window.addEventListener('DOMContentLoaded', () => {
+      renderAdrs();
+      selectScenario(0);
+      setTimeout(drawCurrentArrows, 120);
+    });
+
+    window.addEventListener('resize', () => {
+      requestAnimationFrame(drawCurrentArrows);
+    });
+
+    // بستن پنجره‌ها با کلید Escape
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeDrawer();
+        closeAdrModal();
+      }
+    });
+  </script>
+</body>
+</html>

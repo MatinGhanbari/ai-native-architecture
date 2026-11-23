@@ -1,4 +1,4 @@
-"""رابط وب بخش عملی: python run_ui.py  →  مرورگر روی http://127.0.0.1:8765 باز می‌شود.
+"""رابط وب بخش عملی: python run_ui.py  →  مرورگر روی http://127.0.0.1:8084 باز می‌شود.
 فقط کتابخانهٔ استاندارد Python؛ همان کد واقعی assistant/ و evals/ را صدا می‌زند (CLI دست‌نخورده است)."""
 import importlib.util, json, os, sys, threading, time, webbrowser
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
@@ -266,7 +266,7 @@ class H(BaseHTTPRequestHandler):
             self._send(400 if isinstance(e, ModeError) else 500, {"error": str(e) if isinstance(e, ModeError) else f"{type(e).__name__}: {e}"})
 
 def main():
-    port = int(os.getenv("UI_PORT", "8765"))
+    port = int(os.getenv("UI_PORT", "8084"))
     reset(None)   # هر بار شروع سرور: صف تأیید و حافظهٔ نشست خالی
     srv = ThreadingHTTPServer(("127.0.0.1", port), H)
     url = f"http://127.0.0.1:{port}/"

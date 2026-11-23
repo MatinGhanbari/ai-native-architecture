@@ -12,7 +12,7 @@
 | ۲ | `part-02/` | الگوهای معماری و تصمیم‌های طراحی |
 | ۳ | `part-03_control-quality/` | کنترل، کیفیت، امنیت و تکامل + بخش عملی |
 
-بخش سوم را متین قنبری ارائه می‌دهد. اسلاید جاری: `part-03_control-quality/slides/part-03_v2.pptx`. نسخهٔ ۳ بعداً می‌آید.
+بخش سوم را متین قنبری ارائه می‌دهد. اسلاید جاری: `part-03_control-quality/slides/part-03_v3.pptx`.
 
 ## نقشهٔ پوشه‌ها
 
@@ -22,7 +22,7 @@
 - `part-03_control-quality/slides/` — اسلاید جاری بخش ۳؛ نسخه‌های قبلی در `slides/archive/`
 - `part-03_control-quality/fig/` — شکل‌های مقاله‌ها و منابع
 - `part-03_control-quality/research/` — خلاصهٔ پژوهش بخش ۳
-- `part-03_control-quality/build/` — اسکریپت ساخت نسخهٔ ۲ و تصویرهای رابط دمو
+- `part-03_control-quality/build/` — اسکریپت ساخت نسخه‌های ۲ و ۳ و تصویرهای رابط دمو
 - `part-03_control-quality/private/` — راهنمای شخصی ارائهٔ بخش ۳ (در git نیست)
 - `demo/` — رابط گام‌به‌گام بخش عملی بخش ۳
 - `shared/template.pptx` — قالب دانشگاه

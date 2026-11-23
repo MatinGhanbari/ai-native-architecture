@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>بخش عملی — معماری AI-native</title>
+<style>
+@font-face{font-family:"AradFDVF";src:url("/fonts/AradFDVF.ttf") format("truetype");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Vazirmatn";src:url("/fonts/Vazirmatn-Regular.ttf") format("truetype");font-weight:400;font-display:swap}
+@font-face{font-family:"Vazirmatn";src:url("/fonts/Vazirmatn-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+:root{--bg:#F8FAFC;--surface:#FFFFFF;--fg:#0F172A;--muted:#475569;--line:#CBD5E1;--soft:#F1F5F9;
+  --primary:#1E293B;--accent:#15803D;--accent-bg:#DCFCE7;--danger:#B91C1C;--danger-bg:#FEE2E2;--warn:#B45309;--warn-bg:#FEF3C7;
+  --ring:#2563EB;--r:10px;--font:"AradFDVF","Vazirmatn",Tahoma,sans-serif;--mono:Consolas,"JetBrains Mono",monospace}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--fg);font-size:18px;line-height:1.6;font-variation-settings:"wght" 420;min-height:100vh;display:flex;flex-direction:column}
+b,strong,h1,h2{font-weight:700;font-variation-settings:"wght" 700}
+.lat{font-family:"Segoe UI",Tahoma,sans-serif}
+.en,code{direction:ltr;unicode-bidi:isolate;font-family:var(--mono);font-size:.85em}
+:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+.top{display:flex;align-items:center;padding:10px 22px;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column;line-height:1.3}
+.brand-k{font-size:14px;color:var(--accent);font-weight:700}
+.brand-t{font-size:17px;font-weight:700}
+main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 22px;gap:28px}
+h1{margin:0;font-size:30px;text-align:center}
+.sub{margin:-16px 0 0;color:var(--muted);text-align:center}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,420px));gap:24px;width:100%;justify-content:center}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 3px #0f172a14}
+.card h2{margin:0;font-size:24px}
+.card p{margin:0;color:var(--muted);font-size:16px}
+.who{font-size:14px;color:var(--accent);font-weight:700}
+.st{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted)}
+.st span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-inline-end:7px;background:var(--line)}
+.st .ready::before{background:var(--accent)}.st .starting::before{background:var(--warn)}
+.st .error::before,.st .missing::before{background:var(--danger)}
+.st .note{color:var(--danger);font-size:13px}.st .note::before{display:none}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:auto}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:8px 20px;border-radius:var(--r);border:1px solid var(--primary);background:var(--primary);color:#fff;font-size:18px;text-decoration:none;transition:background .15s}
+.btn:hover{background:#334155}
+.btn.go{background:var(--accent);border-color:var(--accent)}.btn.go:hover{background:#166534}
+.btn.ghost{background:var(--surface);color:var(--fg);border-color:var(--line)}.btn.ghost:hover{background:var(--soft)}
+.btn[aria-disabled="true"]{opacity:.45;pointer-events:none}
+footer{padding:10px 22px;color:var(--muted);font-size:14px;text-align:center;border-top:1px solid var(--line);background:var(--surface)}
+@media (max-width:900px){.cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand"><span class="brand-k">معماری نرم‌افزار · AI-native</span><span class="brand-t">بخش عملی ارائه</span></div></header>
+<main>
+  <h1>کدام دمو؟</h1>
+  <p class="sub">هر دمو در زبانهٔ جدید باز می‌شود؛ برای برگشتن، همین زبانه را انتخاب کنید.</p>
+  <div class="cards">
+    <section class="card" id="c12">
+      <span class="who">ارائه‌دهندگان ۱ و ۲</span>
+      <h2>بخش ۱ و ۲</h2>
+      <p>دستیار پشتیبانی فروشگاه: نقشهٔ اجرای درخواست (RAG، ابزار سفارش، حافظه، ارجاع انسانی) و معماری <span class="lat">C4</span>.</p>
+      <div class="st" id="st12"></div>
+      <div class="actions">
+        <a class="btn go" id="go12" href="http://127.0.0.1:3000/" target="_blank" rel="noopener" aria-disabled="true">باز کردن دمو</a>
+        <a class="btn ghost" id="go12a" href="http://127.0.0.1:3000/architecture" target="_blank" rel="noopener" aria-disabled="true">معماری <span class="lat">C4</span></a>
+      </div>
+    </section>
+    <section class="card" id="c3">
+      <span class="who">ارائه‌دهندهٔ ۳ · متین</span>
+      <h2>بخش ۳ — متین</h2>
+      <p>کنترل، کیفیت، امنیت و تکامل: تزریق غیرمستقیم، رگرسیون، بودجهٔ گام و قطعی سرویس.</p>
+      <div class="st" id="st3"></div>
+      <div class="actions">
+        <a class="btn go" id="go3" href="http://127.0.0.1:8765/" target="_blank" rel="noopener" aria-disabled="true">باز کردن دمو</a>
+      </div>
+    </section>
+  </div>
+</main>
+<footer>همهٔ دموها با <code>python run_all.py</code> بالا آمده‌اند · توقف همه: <code>Ctrl+C</code> در پنجرهٔ ترمینال</footer>
+<script>
+const LABEL={ready:"آماده",starting:"در حال بالا آمدن…",error:"خطا",missing:"نصب نیست",stopped:"اجرا نشده"};
+function line(s){
+  const d=document.createElement("div");
+  const sp=document.createElement("span");sp.className=s.state;sp.textContent=s.title+": "+(LABEL[s.state]||s.state);d.appendChild(sp);
+  if(s.note&&s.state!=="ready"){const n=document.createElement("span");n.className="note";n.textContent=s.note;d.appendChild(n);}
+  return d;
+}
+function setLinks(ids,ok,url){ids.forEach((id,i)=>{const a=document.getElementById(id);a.setAttribute("aria-disabled",ok?"false":"true");if(url&&i===0)a.href=url;});}
+async function poll(){
+  let all={};
+  try{all=await (await fetch("/api/services",{cache:"no-store"})).json();}catch(e){}
+  const a=all["part12-api"],w=all["part12-web"],p=all["part3"];
+  const st12=document.getElementById("st12"),st3=document.getElementById("st3");
+  st12.replaceChildren(...[a,w].filter(Boolean).map(line));
+  st3.replaceChildren(...[p].filter(Boolean).map(line));
+  if(!a&&!w)st12.replaceChildren(line({title:"دمو",state:"stopped"}));
+  if(!p)st3.replaceChildren(line({title:"دمو",state:"stopped"}));
+  setLinks(["go12","go12a"],!!(w&&w.state==="ready"),w&&w.url);
+  setLinks(["go3"],!!(p&&p.state==="ready"),p&&p.url);
+  const done=[a,w,p].filter(Boolean).every(s=>s.state!=="starting");
+  setTimeout(poll,done?5000:1500);
+}
+poll();
+</script>
+</body>
+</html>

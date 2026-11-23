@@ -30,41 +30,17 @@
 - `shared/template.pptx` — قالب دانشگاه
 - `shared/references.md` — فهرست منابع به سبک IEEE
 - `shared/slides/front.pptx` — اسلاید عنوان از فایل به‌روز تیم
-- `shared/slides/references.pptx` — منابع مشترک (`[1]` تا `[16]`) از همان فایل
+- `shared/slides/references.pptx` — منابع مشترک (`[1]` تا `[25]`)؛ اسلاید سوم همان `[17]` تا `[25]` بخش ۳ است
 - `shared/slides/back.pptx` — اسلاید تشکر از همان فایل
 - `shared/slides/archive/` — نسخه‌های قبلی عنوان، مسیر ارائه، منابع و تشکر
 - `tools/merge_decks.py` — ادغام بخش‌ها در یک فایل
-- `run_all.py` و `launcher/` — اجرای هر دو دمو با یک دستور و صفحهٔ شروع
 - `dist/` — خروجی ادغام (در git نیست)
 
 پوشهٔ خالی `presentation/` از قبل در مخزن بوده و سر جایش مانده است. دمو و فیلمی که قبلاً در `دموی بخش اول و دوم/` و `دموی بخش سوم/` بود، به `part-01-02_demo/` و `demo/archive/early-step-ui/` منتقل شده است.
 
-## اجرای هر دو دمو با یک دستور (موقع ارائه)
-
-از ریشهٔ مخزن:
-
-```bash
-python run_all.py
-```
-
-هر دو دمو بالا می‌آیند و صفحهٔ شروع در مرورگر باز می‌شود: http://127.0.0.1:8700
-
-صفحهٔ شروع دو کارت دارد: «بخش ۱ و ۲» و «بخش ۳ — متین». هر دمو در زبانهٔ جدید باز می‌شود و ظاهرش هیچ تغییری نکرده است. برای برگشتن، زبانهٔ صفحهٔ شروع را انتخاب کنید. توقف همه: `Ctrl+C` در همان ترمینال.
-
-| سرویس | پورت | توضیح |
-|-------|------|-------|
-| صفحهٔ شروع | 8700 | `launcher/home.html`، فقط stdlib |
-| دموی بخش ۳ | 8765 | `demo/run_ui.py` |
-| backend بخش ۱ و ۲ | 8000 | FastAPI/uvicorn، با `.venv` خود submodule |
-| frontend بخش ۱ و ۲ | 3000 | Next.js (`next dev`)؛ پورت ثابت است چون CORS در backend فقط 3000 را قبول می‌کند |
-
-گزینه‌ها: `--no-browser`، `--only part3` یا `--only part12`، `--home-port`، `--part3-port`، `--api-port`. لاگ هر سرویس در `launcher/logs/` نوشته می‌شود (در git نیست). اگر دمویی از قبل روی پورت خودش در حال اجرا باشد، لانچر همان را استفاده می‌کند.
-
-پیش‌نیازها: Python 3، Node.js، و یک بار نصب وابستگی‌های submodule (`backend/.venv` و `frontend/node_modules`، طبق `part-01-02_demo/README.md`). بار اول، backend بخش ۱ و ۲ مدل embedding را بار می‌کند و ممکن است تا یک دقیقه طول بکشد. تا وقتی آماده نشده، دکمهٔ آن کارت غیرفعال است.
-
 ## اجرای دموی بخش‌های ۱ و ۲
 
-پس از `git submodule update --init --recursive`، راهنما در `part-01-02_demo/README.md` و `part-01-02_demo/software-architecture-demo/README.md` است. فیلم ضبط‌شده: `part-01-02_demo/recording-2026-11-23.mp4`.
+پس از `git submodule update --init --recursive`، راهنما در `part-01-02_demo/software-architecture-demo/README.md` است. فیلم ضبط‌شده: `part-01-02_demo/recording-2026-11-23.mp4`.
 
 ## اجرای دموی بخش ۳
 

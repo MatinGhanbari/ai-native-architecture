@@ -215,7 +215,7 @@ const STEPS0 = [
 /* ---------- v5: مرحله‌های A، D۱، E و G ---------- */
 const VERD = v => v === "بله" ? '<span class="tag bad">بله</span>' : v === "خیر" ? '<span class="tag ok">خیر</span>' : '<span class="tag warn">نامشخص</span>';
 const STEP_A = { lab: "A", short: "قاعدهٔ الزام‌آور", t: "یک قاعدهٔ الزام‌آور: پنج اجرای مدل در برابر rule engine",
-  d: "آیین‌نامه می‌گوید مرجوعی تا ۷ روز پس از تحویل. همان پرسش پنج بار به مدل واقعی داده می‌شود و بعد به یک rule engine قطعی. در حالت آفلاین، نتیجهٔ ذخیره‌شدهٔ آخرین اجرای زنده پخش می‌شود.",
+  d: "آیین‌نامه می‌گوید مرجوعی تا ۷ روز پس از تحویل. همان پرسش پنج بار به مدل واقعی داده می‌شود و بعد به یک rule engine قطعی. در حالت آفلاین، پنج پاسخ شبیه‌سازی‌شده و ثابت پخش می‌شود تا هر بار همین نتیجه دیده شود.",
   arch: ["gateway", "llm1", "guard"],
   html: () => `<div class="q">قاعده: <b>مرجوعی تا ۷ روز پس از تحویل</b> · پرسش: <b>«سفارش ۱۰۴۵ من روز ۱۴۰۵/۰۸/۲۰ تحویل شده و امروز ۱۴۰۵/۰۸/۲۸ است. هنوز می‌توانم آن را مرجوع کنم؟»</b></div>
     <div class="two"><div><div class="col-h"><span class="tag warn">مدل</span> پنج اجرا</div><div class="actions">${runBtn("۵ اجرای مدل", "bad")}</div><div class="out a"></div></div>
@@ -224,8 +224,8 @@ const STEP_A = { lab: "A", short: "قاعدهٔ الزام‌آور", t: "یک �
     b1.onclick = () => busy(b1, async () => { try {
       const r = await api("/api/rule5", {}); const ok = r.correct === r.runs.length;
       $(".a", el).innerHTML = `<div class="res ${ok ? "safe" : "leak"}"><div class="score"><span class="big ${ok ? "ok" : "bad"}">${fa(r.correct)}/${fa(r.runs.length)}</span>
-        <div><span class="tag ${r.distinct > 1 ? "bad" : "ok"}">${r.distinct > 1 ? "پاسخ‌ها یکسان نیستند" : "پاسخ‌ها یکسان‌اند"}</span><div class="muted">درست · پاسخ درست: <b>${r.truth}</b> · <bdi class="en">${esc(r.model)}</bdi> · <bdi class="en">temperature=${r.temperature}</bdi></div></div></div>
-        <table style="margin-top:8px"><thead><tr><th>اجرا</th><th>حکم</th><th>پاسخ مدل</th><th>تأخیر</th></tr></thead><tbody>${r.runs.map(x => `<tr><td>${fa(x.i)}</td><td>${VERD(x.verdict)}</td><td style="font-size:14px">${esc(x.answer.slice(0, 160))}</td><td>${fa(x.latency_ms)}ms</td></tr>`).join("")}</tbody></table>${pre(r)}</div>`;
+        <div><span class="tag ${r.distinct > 1 ? "bad" : "ok"}">${r.distinct > 1 ? "پاسخ‌ها یکسان نیستند" : "پاسخ‌ها یکسان‌اند"}</span><div class="muted">درست · پاسخ درست: <b>${r.truth}</b> · <bdi class="en">${esc(r.model)}</bdi>${r.mock ? " · شبیه‌سازی ثابت" : ` · <bdi class="en">temperature=${r.temperature}</bdi>`}</div></div></div>
+        <table style="margin-top:8px;table-layout:fixed;width:100%"><colgroup><col style="width:44px"><col style="width:58px"><col><col style="width:70px"></colgroup><thead><tr><th>اجرا</th><th>حکم</th><th>پاسخ مدل</th><th>تأخیر</th></tr></thead><tbody>${r.runs.map(x => `<tr><td>${fa(x.i)}</td><td>${VERD(x.verdict)}</td><td style="font-size:14px;white-space:normal;overflow-wrap:anywhere">${esc(x.answer.slice(0, 160))}</td><td>${fa(x.latency_ms)}ms</td></tr>`).join("")}</tbody></table>${pre(r)}</div>`;
       $("#traceWho").textContent = "پنج اجرای مدل"; $("#chips").innerHTML = `<span>درست: <b>${fa(r.correct)}</b></span><span>حکم متفاوت: <b>${fa(r.distinct)}</b></span>`;
       $("#events").innerHTML = r.runs.map(x => `<li class="${x.correct ? "run_end" : "hot"}"><span class="t">${fa(x.latency_ms)}ms</span><span class="k">اجرای ${fa(x.i)} · ${x.verdict}</span><span class="d">${esc(x.answer.slice(0, 90))}</span></li>`).join("");
     } catch (e) { $(".a", el).innerHTML = errBox(e); } });

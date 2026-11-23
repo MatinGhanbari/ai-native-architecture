@@ -140,10 +140,7 @@ def rule5(b):
     mode = profiles.normalize(b.get("mode"))
     truth = rules.refund_allowed(RULE_DELIVERED, RULE_TODAY)["verdict"]
     if mode == "offline":
-        if os.path.exists(RULE_LIVE_CACHE):
-            out = json.load(open(RULE_LIVE_CACHE, encoding="utf-8")); out["precomputed"] = True
-            return out
-        raise ModeError("نتیجهٔ ذخیره‌شدهٔ اجرای زنده نیست؛ یک بار در حالت LM Studio یا 9router اجرا کنید.")
+        return _rule5_mock(truth)
     try:
         return _rule5_live(mode, truth, int(b.get("n", 5)))
     except ModeError as e:
@@ -151,6 +148,21 @@ def rule5(b):
             out = json.load(open(RULE_LIVE_CACHE, encoding="utf-8")); out["precomputed"] = True; out["live_error"] = str(e)[:160]
             return out
         raise
+
+# حالت آفلاین: پنج پاسخ ثابت و تکرارپذیر (seed ثابت) که رفتار نمونه‌برداری مدل را شبیه‌سازی می‌کند.
+RULE_MOCK = [
+    ("خیر", "خیر. سفارش شما روز ۱۴۰۵/۰۸/۲۰ تحویل شده و امروز ۸ روز گذشته است؛ مهلت مرجوعی ۷ روز است.", 412),
+    ("بله", "بله. از تحویل سفارش کمتر از یک هفته گذشته است و می‌توانید درخواست مرجوعی ثبت کنید.", 377),
+    ("خیر", "خیر. مهلت مرجوعی ۷ روز است و از ۱۴۰۵/۰۸/۲۰ تا امروز این مهلت تمام شده است.", 455),
+    ("بله", "بله. طبق آیین‌نامه تا ۷ روز کاری فرصت دارید و هنوز در مهلت هستید.", 398),
+    ("خیر", "خیر. ۲۱ روز از تحویل گذشته و مهلت ۷ روزه تمام شده است.", 431),
+]
+def _rule5_mock(truth):
+    runs = [{"i": i + 1, "verdict": v, "correct": v == truth, "answer": a, "latency_ms": ms}
+            for i, (v, a, ms) in enumerate(RULE_MOCK)]
+    return {"question": RULE_Q, "truth": truth, "temperature": RULE_TEMP, "model": "mock-llm-large", "mode": "offline",
+            "runs": runs, "correct": sum(r["correct"] for r in runs), "distinct": len({r["verdict"] for r in runs}),
+            "mock": True, "cached_at": None}
 
 def _rule5_live(mode, truth, n):
     mode_env(mode)

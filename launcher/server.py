@@ -131,7 +131,17 @@ def build_services(a):
         return [sys.executable, os.path.join(DEMO3, "run_ui.py"), "--no-browser"]
 
     def api_cmd():
-        return [venv_python(backend), "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(a.api_port)]
+        return [
+            venv_python(backend),
+            "-m",
+            "uvicorn",
+            "app.main:app",
+            "--reload",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(a.api_port),
+        ]
 
     def web_cmd():
         next_bin = os.path.join(frontend, "node_modules", "next", "dist", "bin", "next")

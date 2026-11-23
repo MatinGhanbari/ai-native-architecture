@@ -31,7 +31,7 @@ npm install
 ## بررسی کد
 
 **ساختار**
-- **Backend:** FastAPI + uvicorn (Python). ماژول‌ها: `orchestrator` (حلقهٔ عامل، حداکثر چند گام)، `knowledge` (RAG ترکیبی BM25 + بردار)، `tools/order_status` (ابزار فقط‌خواندنی سفارش از `data/orders_db.json`)، `memory` (حافظهٔ نشست در RAM، ۶ نوبت آخر)، `handoff` (صف اپراتور در RAM)، `llm` (mock یا API سازگار با OpenAI)، `trace` (ساخت مسیر اجرا برای نمایش).
+- **Backend:** FastAPI + uvicorn (Python). ماژول‌ها: `orchestrator` (حلقهٔ عامل، حداکثر چند گام)، `llm/router` (مدل سبک تریاژ: `continue` | `handoff_refund` با schema validation)، `knowledge` (RAG ترکیبی BM25 + بردار)، `tools/order_status` (ابزار فقط‌خواندنی سفارش از `data/orders_db.json`)، `memory` (حافظهٔ نشست در RAM، ۶ نوبت آخر)، `handoff` (صف اپراتور در RAM)، `llm` (mock یا API سازگار با OpenAI)، `trace` (ساخت مسیر اجرا برای نمایش).
 - **Frontend:** Next.js 15.5 (App Router، Turbopack) + React 19، Tailwind 4، shadcn/base-ui، `@xyflow/react` برای نمودار و framer-motion برای انیمیشن. صفحهٔ `/` مسیر اجرا را نشان می‌دهد و `/architecture` نمای C4 لایه‌لایه با ADR است.
 - **API:** `GET /health`، `POST /chat`، `POST /session/reset`، `GET /admin/handoffs`، `POST /admin/reindex`، `POST /debug/retrieve`.
 - Docker لازم نیست.

@@ -16,9 +16,9 @@
 
 ## نقشهٔ پوشه‌ها
 
-- `part-01_foundations/slides/` — اسلایدهای بخش ۱ (استخراج‌شده از نسخهٔ یکپارچهٔ قبلی، اسلایدهای ۳ تا ۱۲)
+- `part-01_foundations/slides/part-01.pptx` — اسلایدهای بخش ۱ از فایل به‌روز تیم (اسلایدهای ۲ تا ۱۲؛ جلد بخش به‌علاوهٔ محتوا). نسخهٔ قبلی در `slides/archive/`
 - `part-01_foundations/Guide_Presenter1_Foundations.docx` — راهنمای ارائه‌دهندهٔ ۱
-- `part-02/slides/part-02_original.pptx` — اسلایدهای اصلی ارائه‌دهندهٔ ۲، بدون تغییر محتوا
+- `part-02/slides/part-02.pptx` — اسلایدهای بخش ۲ از فایل به‌روز تیم (اسلایدهای ۱۳ تا ۲۱). نسخهٔ قبلی (`part-02_original.pptx`) در `slides/archive/`
 - `part-03_control-quality/slides/` — اسلاید جاری بخش ۳؛ نسخه‌های قبلی در `slides/archive/`
 - `part-03_control-quality/fig/` — شکل‌های مقاله‌ها و منابع
 - `part-03_control-quality/research/` — خلاصهٔ پژوهش بخش ۳
@@ -29,7 +29,10 @@
 - `part-01-02_demo/` — دمو و فیلم بخش‌های ۱ و ۲ (submodule + ضبط صفحه)
 - `shared/template.pptx` — قالب دانشگاه
 - `shared/references.md` — فهرست منابع به سبک IEEE
-- `shared/slides/` — اسلاید عنوان، مسیر ارائه، منابع مشترک و تشکر (برای ادغام نهایی)
+- `shared/slides/front.pptx` — اسلاید عنوان از فایل به‌روز تیم
+- `shared/slides/references.pptx` — منابع مشترک (`[1]` تا `[16]`) از همان فایل
+- `shared/slides/back.pptx` — اسلاید تشکر از همان فایل
+- `shared/slides/archive/` — نسخه‌های قبلی عنوان، مسیر ارائه، منابع و تشکر
 - `tools/merge_decks.py` — ادغام بخش‌ها در یک فایل
 - `dist/` — خروجی ادغام (در git نیست)
 
@@ -62,7 +65,7 @@ python tools/merge_decks.py
 
 خروجی: `dist/AI-native-Architecture.pptx`
 
-به‌صورت پیش‌فرض، اگر فایل‌های `shared/slides/front.pptx` و `shared/slides/back.pptx` موجود باشند، اسلاید عنوان و مسیر ارائه در ابتدا و منابع مشترک و تشکر در انتها اضافه می‌شوند. برای فقط سه بخش:
+چیدمان پیش‌فرض ادغام: عنوان (`front.pptx`) + بخش ۱ + بخش ۲ + بخش ۳ + منابع (`references.pptx`) + تشکر (`back.pptx`). اگر `references.pptx` موجود باشد، اسلایدهای «منابع این بخش» از فایل بخش ۳ در خروجی ادغام نمی‌آیند تا منابع دو بار تکرار نشوند. برای فقط سه بخش:
 
 ```bash
 python tools/merge_decks.py --parts-only

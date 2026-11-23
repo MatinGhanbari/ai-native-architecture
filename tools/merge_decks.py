@@ -11,6 +11,11 @@ Usage (from the repo root):
     python tools/merge_decks.py
     python tools/merge_decks.py --parts-only
     python tools/merge_decks.py -o dist/AI-native-Architecture.pptx
+
+Default order: front.pptx (title), part 1, part 2, part 3, references.pptx,
+then back.pptx (thanks). If shared/slides/references.pptx is present, part 3
+slides titled «منابع این بخش» are omitted from the merge so the shared
+references deck is used once.
 """
 from __future__ import annotations
 
@@ -505,11 +510,59 @@ def merge(paths: list[Path], output: Path) -> int:
     return total
 
 
+
+PART3_LOCAL_REF_MARKERS = ("منابع این بخش",)
+
+
+def slide_has_marker(slide_path: Path, markers: tuple[str, ...]) -> bool:
+    data = slide_path.read_bytes().decode("utf-8", "ignore")
+    return any(marker in data for marker in markers)
+
+
+def copy_pptx_dropping_markers(src: Path, dst: Path, markers: tuple[str, ...]) -> int:
+    """Write dst as a copy of src without slides whose XML contains a marker.
+
+    Only the presentation sldIdLst is edited; unused parts are left in the
+    package. Returns the number of dropped slides (0 if nothing matched,
+    in which case dst is not written).
+    """
+    with tempfile.TemporaryDirectory(prefix="merge-drop-") as td:
+        src_dir = Path(td)
+        unpack(src, src_dir)
+        pres_path = src_dir / "ppt" / "presentation.xml"
+        rels_path = src_dir / "ppt" / "_rels" / "presentation.xml.rels"
+        pres = parse(pres_path)
+        rels = parse(rels_path)
+        rel_by_id = {rel.get("Id"): rel for rel in rels.getroot()}
+        sld_lst = pres.getroot().find(f"{{{P_NS}}}sldIdLst")
+        if sld_lst is None:
+            return 0
+        dropped = 0
+        for sld in list(sld_lst):
+            rid = sld.get(f"{{{R_NS}}}id")
+            rel = rel_by_id.get(rid)
+            if rel is None:
+                continue
+            target = rel.get("Target")
+            slide = resolve_rel_target(src_dir / "ppt" / "presentation.xml", target, src_dir)
+            if slide is None or not slide_has_marker(slide, markers):
+                continue
+            sld_lst.remove(sld)
+            dropped += 1
+        if dropped:
+            write_xml(pres, pres_path)
+            pack(src_dir, dst)
+        return dropped
+
+
 def default_paths(root: Path, parts_only: bool) -> list[Path]:
-    part1 = root / "part-01_foundations" / "slides" / "part-01_foundations.pptx"
+    part1 = _first_existing(
+        root / "part-01_foundations" / "slides" / "part-01.pptx",
+        root / "part-01_foundations" / "slides" / "part-01_foundations.pptx",
+    )
     part2 = _first_existing(
-        root / "part-02" / "slides" / "part-02_original.pptx",
         root / "part-02" / "slides" / "part-02.pptx",
+        root / "part-02" / "slides" / "part-02_original.pptx",
     )
     part3 = _first_existing(
         root / "part-03_control-quality" / "slides" / "part-03_v4.pptx",
@@ -520,6 +573,7 @@ def default_paths(root: Path, parts_only: bool) -> list[Path]:
         root / "part-03_control-quality" / "slides" / "part-03.pptx",
     )
     front = root / "shared" / "slides" / "front.pptx"
+    references = root / "shared" / "slides" / "references.pptx"
     back = root / "shared" / "slides" / "back.pptx"
     paths: list[Path] = []
     if not parts_only and front.exists():
@@ -528,6 +582,8 @@ def default_paths(root: Path, parts_only: bool) -> list[Path]:
         if required is None:
             raise SystemExit(f"cannot find slides for {label}")
         paths.append(required)
+    if not parts_only and references.exists():
+        paths.append(references)
     if not parts_only and back.exists():
         paths.append(back)
     return paths
@@ -543,11 +599,12 @@ def _first_existing(*candidates: Path) -> Path | None:
 def main(argv: list[str] | None = None) -> int:
     root = repo_root()
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--parts-only", action="store_true", help="skip shared title/agenda and references/thanks slides")
+    parser.add_argument("--parts-only", action="store_true", help="skip shared title, references, and thanks slides")
     parser.add_argument("--part1", type=Path)
     parser.add_argument("--part2", type=Path)
     parser.add_argument("--part3", type=Path)
     parser.add_argument("--front", type=Path)
+    parser.add_argument("--references", type=Path)
     parser.add_argument("--back", type=Path)
     parser.add_argument("-o", "--output", type=Path, default=root / "dist" / "AI-native-Architecture.pptx")
     args = parser.parse_args(argv)
@@ -555,22 +612,41 @@ def main(argv: list[str] | None = None) -> int:
     if args.part1 or args.part2 or args.part3:
         paths: list[Path] = []
         front = args.front or (None if args.parts_only else root / "shared" / "slides" / "front.pptx")
+        references = args.references or (None if args.parts_only else root / "shared" / "slides" / "references.pptx")
         back = args.back or (None if args.parts_only else root / "shared" / "slides" / "back.pptx")
         if front and Path(front).exists() and not args.parts_only:
             paths.append(Path(front))
         for p in (args.part1, args.part2, args.part3):
             if p:
                 paths.append(p)
+        if references and Path(references).exists() and not args.parts_only:
+            paths.append(Path(references))
         if back and Path(back).exists() and not args.parts_only:
             paths.append(Path(back))
     else:
         paths = default_paths(root, args.parts_only)
 
     output = args.output if args.output.is_absolute() else (Path.cwd() / args.output)
-    print("merging:")
-    for p in paths:
-        print(f"  - {p}")
-    total = merge(paths, output)
+    refs_in_merge = any(p.name == "references.pptx" for p in paths)
+    with tempfile.TemporaryDirectory(prefix="merge-part3-") as td:
+        if refs_in_merge:
+            new_paths: list[Path] = []
+            for p in paths:
+                if "part-03_control-quality" in p.as_posix().replace("\\", "/"):
+                    filtered = Path(td) / "part-03-without-local-refs.pptx"
+                    dropped = copy_pptx_dropping_markers(p, filtered, PART3_LOCAL_REF_MARKERS)
+                    if dropped:
+                        print(f"  omitting {dropped} local reference slide(s) from {p.name}; using shared references.pptx")
+                        new_paths.append(filtered)
+                    else:
+                        new_paths.append(p)
+                else:
+                    new_paths.append(p)
+            paths = new_paths
+        print("merging:")
+        for p in paths:
+            print(f"  - {p}")
+        total = merge(paths, output)
     print(f"wrote {output} ({total} slides)")
     return 0
 

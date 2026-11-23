@@ -1,0 +1,12 @@
+# اجرای ارزیابی در هر تغییر prompt/مدل/کد (fitness function در CI)
+name: ai-eval
+on: [push, pull_request]
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: offline eval (deterministic)
+        run: MODE=offline python evals/run_evals.py --min-pass 1.0

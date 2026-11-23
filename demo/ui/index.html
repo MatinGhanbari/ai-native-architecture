@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>بخش عملی — کنترل، کیفیت، امنیت و تکامل</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="brand-k">بخش ۳ · عملی</span><span class="brand-t">دستیار پشتیبانی فروشگاه کتاب‌سرا</span></div>
+  <nav class="dots" id="dots" aria-label="مراحل"></nav>
+  <div class="top-tools">
+    <div class="seg" role="radiogroup" aria-label="حالت مدل">
+      <button role="radio" data-mode="offline" class="on" aria-checked="true">آفلاین</button>
+      <button role="radio" data-mode="real" aria-checked="false">مدل واقعی</button>
+    </div>
+    <span class="mode-st" id="modeSt"></span>
+    <button class="btn ghost sm" id="resetBtn" title="پاک کردن حافظهٔ نشست، صف تأیید و نتایج">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6M20 20v-6h-6M5.6 15a7 7 0 0 0 12.3 2M18.4 9A7 7 0 0 0 6.1 7"/></svg>reset</button>
+  </div>
+</header>
+<main class="stage">
+  <section class="main" id="main" aria-live="polite"></section>
+  <aside class="trace" aria-label="trace">
+    <div class="trace-h"><h2>trace</h2><span id="traceWho" class="muted"></span></div>
+    <div class="mini" id="mini"></div>
+    <div class="chips" id="chips"></div>
+    <ol class="events" id="events"><li class="empty">هنوز اجرایی نشده؛ دکمهٔ اجرا را بزنید.</li></ol>
+  </aside>
+</main>
+<footer class="bottom">
+  <button class="btn ghost" id="prevBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>قبلی</button>
+  <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+  <span class="kbd muted">کلیدهای ← و → </span>
+  <button class="btn" id="nextBtn">بعدی<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

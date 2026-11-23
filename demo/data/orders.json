@@ -1,0 +1,6 @@
+[
+  {"order_id": "1042", "customer_id": "C001", "customer_name": "سارا محمدی", "status": "ارسال‌شده", "eta": "۱۴۰۵/۰۹/۰۳", "items": ["کتاب معماری نرم‌افزار"]},
+  {"order_id": "1045", "customer_id": "C001", "customer_name": "سارا محمدی", "status": "تحویل‌شده", "eta": "۱۴۰۵/۰۸/۲۰", "items": ["دفتر یادداشت"]},
+  {"order_id": "1043", "customer_id": "C002", "customer_name": "علی رضایی", "status": "در حال پردازش", "eta": "۱۴۰۵/۰۹/۰۵", "items": ["ماشین‌حساب مهندسی"]},
+  {"order_id": "1044", "customer_id": "C003", "customer_name": "مریم کریمی", "status": "تحویل‌شده", "eta": "۱۴۰۵/۰۸/۲۵", "items": ["کتاب پایگاه داده"]}
+]

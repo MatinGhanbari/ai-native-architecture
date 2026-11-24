@@ -12,10 +12,16 @@ Usage (from the repo root):
     python tools/merge_decks.py --parts-only
     python tools/merge_decks.py -o dist/AI-native-Architecture.pptx
 
-Default order: front.pptx (title), part 1, part 2, part 3, references.pptx,
-then back.pptx (thanks). If shared/slides/references.pptx is present, part 3
-slides titled «منابع این بخش» are omitted from the merge so the shared
-references deck is used once.
+Default order: front.pptx (title), part 1, part 2, part 3,
+references_selected.pptx (or references.pptx), then back.pptx (thanks).
+Shared references are chosen via --references or, by default,
+shared/slides/references_selected.pptx. --references works on its own;
+the three part decks are still taken from the default folders.
+If a shared references deck is included, any per-part slides titled
+«منابع این بخش» are omitted. Part decks are the newest *.pptx in each
+part-0N/slides/ folder (archive/ is ignored). After the merge, the
+part-3 title in the output is updated to «چالش‌ها، کیفیت، امنیت و هزینه»
+/ "Limits, Quality, Security & Cost" without changing the source files.
 """
 from __future__ import annotations
 
@@ -511,7 +517,24 @@ def merge(paths: list[Path], output: Path) -> int:
 
 
 
-PART3_LOCAL_REF_MARKERS = ("منابع این بخش",)
+LOCAL_REF_MARKERS = ("منابع این بخش", "منابع این قسمت")
+
+# Official part-3 title replacements applied only to the merged output.
+PART3_TITLE_REPLACEMENTS = (
+    ("چالش‌ها، کیفیت، امنیت و تکامل", "چالش‌ها، کیفیت، امنیت و هزینه"),
+    ("چالشها، کیفیت، امنیت و تکامل", "چالش‌ها، کیفیت، امنیت و هزینه"),
+    ("کنترل، کیفیت، امنیت و تکامل", "چالش‌ها، کیفیت، امنیت و هزینه"),
+    ("Limits, Quality, Security & Evolution", "Limits, Quality, Security & Cost"),
+    ("Limits, Quality, Security &amp; Evolution", "Limits, Quality, Security &amp; Cost"),
+    ("Control, Quality, Security & Evolution", "Limits, Quality, Security & Cost"),
+    ("Control, Quality, Security &amp; Evolution", "Limits, Quality, Security &amp; Cost"),
+)
+
+PART_FOLDER_CANDIDATES = {
+    "part-01": ("part-01", "part-01_foundations"),
+    "part-02": ("part-02",),
+    "part-03": ("part-03", "part-03_control-quality"),
+}
 
 
 def slide_has_marker(slide_path: Path, markers: tuple[str, ...]) -> bool:
@@ -555,25 +578,55 @@ def copy_pptx_dropping_markers(src: Path, dst: Path, markers: tuple[str, ...]) -
         return dropped
 
 
-def default_paths(root: Path, parts_only: bool) -> list[Path]:
-    part1 = _first_existing(
-        root / "part-01_foundations" / "slides" / "part-01.pptx",
-        root / "part-01_foundations" / "slides" / "part-01_foundations.pptx",
+def newest_slides_pptx(slides_dir: Path) -> Path | None:
+    """Newest .pptx directly in slides/ (not in archive/ or lock files)."""
+    if not slides_dir.is_dir():
+        return None
+    files = [p for p in slides_dir.glob("*.pptx") if not p.name.startswith("~$")]
+    if not files:
+        return None
+    return max(files, key=lambda p: (p.stat().st_mtime, p.name))
+
+
+def find_part_deck(root: Path, folder_names: tuple[str, ...]) -> Path | None:
+    for folder in folder_names:
+        found = newest_slides_pptx(root / folder / "slides")
+        if found:
+            return found
+    return None
+
+
+def default_references(root: Path) -> Path | None:
+    return _first_existing(
+        root / "shared" / "slides" / "references_selected.pptx",
+        root / "shared" / "slides" / "references.pptx",
     )
-    part2 = _first_existing(
-        root / "part-02" / "slides" / "part-02.pptx",
-        root / "part-02" / "slides" / "part-02_original.pptx",
-    )
-    part3 = _first_existing(
-        root / "part-03_control-quality" / "slides" / "part-03_v4.pptx",
-        root / "part-03_control-quality" / "slides" / "part-03_v3.pptx",
-        root / "part-03_control-quality" / "slides" / "archive" / "part-03_v3.pptx",
-        root / "part-03_control-quality" / "slides" / "part-03_v2.pptx",
-        root / "part-03_control-quality" / "slides" / "part-03_v1.pptx",
-        root / "part-03_control-quality" / "slides" / "part-03.pptx",
-    )
+
+
+def is_references_deck(path: Path) -> bool:
+    name = path.name.lower()
+    return name.endswith(".pptx") and "references" in name
+
+
+def is_part_deck(path: Path) -> bool:
+    posix = path.as_posix().replace("\\", "/")
+    parts = posix.split("/")
+    for folder in (
+        "part-01", "part-02", "part-03",
+        "part-01_foundations", "part-03_control-quality",
+    ):
+        if folder in parts:
+            return True
+    return False
+
+
+def default_paths(root: Path, parts_only: bool, references: Path | None = None) -> list[Path]:
+    part1 = find_part_deck(root, PART_FOLDER_CANDIDATES["part-01"])
+    part2 = find_part_deck(root, PART_FOLDER_CANDIDATES["part-02"])
+    part3 = find_part_deck(root, PART_FOLDER_CANDIDATES["part-03"])
     front = root / "shared" / "slides" / "front.pptx"
-    references = root / "shared" / "slides" / "references.pptx"
+    if references is None:
+        references = default_references(root)
     back = root / "shared" / "slides" / "back.pptx"
     paths: list[Path] = []
     if not parts_only and front.exists():
@@ -582,8 +635,8 @@ def default_paths(root: Path, parts_only: bool) -> list[Path]:
         if required is None:
             raise SystemExit(f"cannot find slides for {label}")
         paths.append(required)
-    if not parts_only and references.exists():
-        paths.append(references)
+    if not parts_only and references is not None and Path(references).exists():
+        paths.append(Path(references))
     if not parts_only and back.exists():
         paths.append(back)
     return paths
@@ -591,9 +644,84 @@ def default_paths(root: Path, parts_only: bool) -> list[Path]:
 
 def _first_existing(*candidates: Path) -> Path | None:
     for c in candidates:
-        if c.exists():
-            return c
+        if c is not None and Path(c).exists():
+            return Path(c)
     return None
+
+
+def apply_part3_title_rename(pptx_path: Path) -> int:
+    """Replace old part-3 titles inside a packed pptx. Returns replacement count."""
+    with tempfile.TemporaryDirectory(prefix="merge-rename-") as td:
+        dest = Path(td)
+        unpack(pptx_path, dest)
+        changed = 0
+        for xml in dest.rglob("*.xml"):
+            raw = xml.read_bytes()
+            try:
+                text = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                continue
+            new = text
+            for old, repl in PART3_TITLE_REPLACEMENTS:
+                if old in new:
+                    count = new.count(old)
+                    new = new.replace(old, repl)
+                    changed += count
+            if new != text:
+                xml.write_text(new, encoding="utf-8")
+        if changed:
+            pack(dest, pptx_path)
+        return changed
+
+
+def resolve_paths(root: Path, args: argparse.Namespace) -> list[Path]:
+    """Build the merge list. --references works even without --part1/2/3."""
+    part1 = args.part1 or find_part_deck(root, PART_FOLDER_CANDIDATES["part-01"])
+    part2 = args.part2 or find_part_deck(root, PART_FOLDER_CANDIDATES["part-02"])
+    part3 = args.part3 or find_part_deck(root, PART_FOLDER_CANDIDATES["part-03"])
+    front = args.front if args.front is not None else (
+        None if args.parts_only else root / "shared" / "slides" / "front.pptx"
+    )
+    if args.references is not None:
+        references = args.references
+    elif args.parts_only:
+        references = None
+    else:
+        references = default_references(root)
+    back = args.back if args.back is not None else (
+        None if args.parts_only else root / "shared" / "slides" / "back.pptx"
+    )
+    paths: list[Path] = []
+    if front and Path(front).exists() and not args.parts_only:
+        paths.append(Path(front))
+    for required, label in ((part1, "part-01"), (part2, "part-02"), (part3, "part-03")):
+        if required is None:
+            raise SystemExit(f"cannot find slides for {label}")
+        paths.append(Path(required))
+    if references and Path(references).exists() and not args.parts_only:
+        paths.append(Path(references))
+    if back and Path(back).exists() and not args.parts_only:
+        paths.append(Path(back))
+    return paths
+
+
+def drop_local_ref_slides(paths: list[Path], workdir: Path) -> list[Path]:
+    """If a shared references deck is in the list, strip per-part ref slides."""
+    if not any(is_references_deck(p) for p in paths):
+        return paths
+    new_paths: list[Path] = []
+    for p in paths:
+        if is_references_deck(p) or not is_part_deck(p):
+            new_paths.append(p)
+            continue
+        filtered = workdir / f"{p.stem}-without-local-refs.pptx"
+        dropped = copy_pptx_dropping_markers(p, filtered, LOCAL_REF_MARKERS)
+        if dropped:
+            print(f"  omitting {dropped} local reference slide(s) from {p.name}; using shared references")
+            new_paths.append(filtered)
+        else:
+            new_paths.append(p)
+    return new_paths
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -604,49 +732,31 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--part2", type=Path)
     parser.add_argument("--part3", type=Path)
     parser.add_argument("--front", type=Path)
-    parser.add_argument("--references", type=Path)
+    parser.add_argument(
+        "--references",
+        type=Path,
+        help="shared references deck (default: shared/slides/references_selected.pptx). Works without --part1/2/3.",
+    )
     parser.add_argument("--back", type=Path)
+    parser.add_argument("--no-rename-part3", action="store_true", help="leave part-3 titles in source wording")
     parser.add_argument("-o", "--output", type=Path, default=root / "dist" / "AI-native-Architecture.pptx")
     args = parser.parse_args(argv)
 
-    if args.part1 or args.part2 or args.part3:
-        paths: list[Path] = []
-        front = args.front or (None if args.parts_only else root / "shared" / "slides" / "front.pptx")
-        references = args.references or (None if args.parts_only else root / "shared" / "slides" / "references.pptx")
-        back = args.back or (None if args.parts_only else root / "shared" / "slides" / "back.pptx")
-        if front and Path(front).exists() and not args.parts_only:
-            paths.append(Path(front))
-        for p in (args.part1, args.part2, args.part3):
-            if p:
-                paths.append(p)
-        if references and Path(references).exists() and not args.parts_only:
-            paths.append(Path(references))
-        if back and Path(back).exists() and not args.parts_only:
-            paths.append(Path(back))
-    else:
-        paths = default_paths(root, args.parts_only)
-
+    paths = resolve_paths(root, args)
     output = args.output if args.output.is_absolute() else (Path.cwd() / args.output)
-    refs_in_merge = any(p.name == "references.pptx" for p in paths)
+
     with tempfile.TemporaryDirectory(prefix="merge-part3-") as td:
-        if refs_in_merge:
-            new_paths: list[Path] = []
-            for p in paths:
-                if "part-03_control-quality" in p.as_posix().replace("\\", "/"):
-                    filtered = Path(td) / "part-03-without-local-refs.pptx"
-                    dropped = copy_pptx_dropping_markers(p, filtered, PART3_LOCAL_REF_MARKERS)
-                    if dropped:
-                        print(f"  omitting {dropped} local reference slide(s) from {p.name}; using shared references.pptx")
-                        new_paths.append(filtered)
-                    else:
-                        new_paths.append(p)
-                else:
-                    new_paths.append(p)
-            paths = new_paths
+        paths = drop_local_ref_slides(paths, Path(td))
         print("merging:")
         for p in paths:
             print(f"  - {p}")
         total = merge(paths, output)
+
+    renamed = 0
+    if not args.no_rename_part3:
+        renamed = apply_part3_title_rename(output)
+        if renamed:
+            print(f"  updated {renamed} part-3 title occurrence(s) in the merged deck")
     print(f"wrote {output} ({total} slides)")
     return 0
 
